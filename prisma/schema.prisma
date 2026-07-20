@@ -7,14 +7,206 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DataSourceType {
+  PLAID
+  CSV_IMPORT
+  MANUAL
+  FIDELITY_IMPORT
+  OTHER_PROVIDER
+}
+
+enum DataSourceStatus {
+  ACTIVE
+  INACTIVE
+  NEEDS_ATTENTION
+  ERROR
+}
+
+enum ConnectionStatus {
+  ACTIVE
+  NEEDS_REAUTHENTICATION
+  DISCONNECTED
+  ERROR
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CREDIT_CARD
+  LOAN
+  MORTGAGE
+  BROKERAGE
+  RETIREMENT
+  FOUR_O_ONE_K
+  MANUAL_ASSET
+  MANUAL_DEBT
+  OTHER
+}
+
+enum AccountSource {
+  SYNCED
+  IMPORTED
+  MANUAL
+}
+
+enum TransactionStatus {
+  PENDING
+  POSTED
+  CANCELED
+}
+
+enum FinancialRole {
+  INCOME
+  EXPENSE
+  TRANSFER
+  REFUND
+  CREDIT_CARD_PAYMENT
+  INVESTMENT_ACTIVITY
+  DEBT_PAYMENT
+  IGNORED
+  UNCATEGORIZED
+}
+
+enum RecurringFlowType {
+  BILL
+  SUBSCRIPTION
+  TRANSFER
+  DEBT_PAYMENT
+  CREDIT_CARD_PAYMENT
+  EXPECTED_INCOME
+  OTHER
+}
+
+enum RecurringFrequency {
+  WEEKLY
+  BIWEEKLY
+  SEMIMONTHLY
+  MONTHLY
+  BIMONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+  IRREGULAR
+}
+
+enum ConfidenceLevel {
+  HIGH
+  MEDIUM
+  LOW
+  NEEDS_CONFIRMATION
+}
+
+enum RecurringStatus {
+  ACTIVE
+  INACTIVE
+  NEEDS_CONFIRMATION
+}
+
+enum CalendarEventType {
+  BILL
+  SUBSCRIPTION
+  DEBT_PAYMENT
+  CREDIT_CARD_PAYMENT
+  EXPECTED_INCOME
+  OTHER_RECURRING
+}
+
+enum CalendarDateSource {
+  INFERRED
+  USER_CONFIRMED
+  PROVIDER
+  IMPORTED
+  MANUAL
+}
+
+enum CalendarAmountSource {
+  FIXED
+  ESTIMATED
+  LAST_OBSERVED
+  PROVIDER
+  IMPORTED
+  MANUAL
+}
+
+enum CalendarEventStatus {
+  PREDICTED
+  CONFIRMED
+  PAID
+  OVERDUE
+  SKIPPED
+  NEEDS_CONFIRMATION
+  INACTIVE
+}
+
+enum InvestmentSource {
+  SYNCED
+  IMPORTED
+  MANUAL
+}
+
+enum InvestmentTransactionType {
+  BUY
+  SELL
+  DIVIDEND
+  INTEREST
+  CONTRIBUTION
+  WITHDRAWAL
+  TRANSFER
+  FEE
+  OTHER
+}
+
+enum ManualAssetType {
+  HOME
+  OTHER_REAL_ESTATE
+  VEHICLE
+  PRIVATE_ASSET
+  OTHER_ASSET
+  MORTGAGE
+  AUTO_LOAN
+  STUDENT_LOAN
+  PERSONAL_LOAN
+  OTHER_DEBT
+}
+
+enum ImportType {
+  BANK_TRANSACTIONS_CSV
+  FIDELITY_POSITIONS_CSV
+  FIDELITY_TRANSACTIONS_CSV
+  MANUAL_BALANCE_SNAPSHOT
+  GENERIC_ACCOUNT_BALANCE_CSV
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  displayName  String?       @map("display_name")
-  passwordHash String        @map("password_hash")
-  sessions     AuthSession[]
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id                         String                      @id @default(cuid())
+  email                      String                      @unique
+  displayName                String?                     @map("display_name")
+  passwordHash               String                      @map("password_hash")
+  sessions                   AuthSession[]
+  dataSources                DataSource[]
+  institutionConnections     InstitutionConnection[]
+  accounts                   Account[]
+  transactions               Transaction[]
+  transactionOverrides       TransactionOverride[]
+  recurringStreams           RecurringStream[]
+  calendarEvents             CalendarEvent[]
+  calendarOverrides          CalendarOverride[]
+  investmentHoldings         InvestmentHolding[]
+  investmentBalanceSnapshots InvestmentBalanceSnapshot[]
+  investmentTransactions     InvestmentTransaction[]
+  manualAssets               ManualAsset[]
+  balanceSnapshots           BalanceSnapshot[]
+  importJobs                 ImportJob[]
+  createdAt                  DateTime                    @default(now()) @map("created_at")
+  updatedAt                  DateTime                    @updatedAt @map("updated_at")
 
   @@map("users")
 }
@@ -29,4 +221,368 @@ model AuthSession {
 
   @@index([userId])
   @@map("auth_sessions")
+}
+
+model DataSource {
+  id                     String                  @id @default(cuid())
+  userId                 String                  @map("user_id")
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceType             DataSourceType          @map("source_type")
+  displayName            String                  @map("display_name")
+  status                 DataSourceStatus        @default(ACTIVE)
+  lastUpdatedAt          DateTime?               @map("last_updated_at")
+  institutionConnections InstitutionConnection[]
+  accounts               Account[]
+  importJobs             ImportJob[]
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, sourceType])
+  @@map("data_sources")
+}
+
+model InstitutionConnection {
+  id                   String           @id @default(cuid())
+  userId               String           @map("user_id")
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSourceId         String           @map("data_source_id")
+  dataSource           DataSource       @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
+  provider             String
+  providerItemId       String?          @map("provider_item_id")
+  institutionId        String?          @map("institution_id")
+  institutionName      String           @map("institution_name")
+  encryptedAccessToken String?          @map("encrypted_access_token")
+  status               ConnectionStatus @default(ACTIVE)
+  lastSuccessfulSyncAt DateTime?        @map("last_successful_sync_at")
+  accounts             Account[]
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+
+  @@unique([provider, providerItemId])
+  @@index([userId])
+  @@index([dataSourceId])
+  @@index([institutionId])
+  @@map("institution_connections")
+}
+
+model Account {
+  id                      String                      @id @default(cuid())
+  userId                  String                      @map("user_id")
+  user                    User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSourceId            String                      @map("data_source_id")
+  dataSource              DataSource                  @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
+  institutionConnectionId String?                     @map("institution_connection_id")
+  institutionConnection   InstitutionConnection?      @relation(fields: [institutionConnectionId], references: [id], onDelete: SetNull)
+  providerAccountId       String?                     @map("provider_account_id")
+  name                    String
+  officialName            String?                     @map("official_name")
+  institutionName         String?                     @map("institution_name")
+  accountType             AccountType                 @map("account_type")
+  accountSubtype          String?                     @map("account_subtype")
+  source                  AccountSource
+  currency                String                      @default("USD") @db.Char(3)
+  currentBalance          Decimal                     @map("current_balance") @db.Decimal(19, 4)
+  availableBalance        Decimal?                    @map("available_balance") @db.Decimal(19, 4)
+  creditLimit             Decimal?                    @map("credit_limit") @db.Decimal(19, 4)
+  isManual                Boolean                     @default(false) @map("is_manual")
+  isActive                Boolean                     @default(true) @map("is_active")
+  lastSyncedAt            DateTime?                   @map("last_synced_at")
+  lastImportedAt          DateTime?                   @map("last_imported_at")
+  transactions            Transaction[]
+  recurringStreams        RecurringStream[]
+  calendarEvents          CalendarEvent[]
+  investmentHoldings      InvestmentHolding[]
+  investmentSnapshots     InvestmentBalanceSnapshot[]
+  investmentTransactions  InvestmentTransaction[]
+  balanceSnapshots        BalanceSnapshot[]
+  createdAt               DateTime                    @default(now()) @map("created_at")
+  updatedAt               DateTime                    @updatedAt @map("updated_at")
+
+  @@unique([dataSourceId, providerAccountId])
+  @@index([userId])
+  @@index([userId, accountType, isActive])
+  @@index([institutionConnectionId])
+  @@index([institutionName])
+  @@map("accounts")
+}
+
+model Transaction {
+  id                           String                @id @default(cuid())
+  userId                       String                @map("user_id")
+  user                         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId                    String                @map("account_id")
+  account                      Account               @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  providerTransactionId        String?               @map("provider_transaction_id")
+  originalName                 String                @map("original_name")
+  merchantName                 String?               @map("merchant_name")
+  amount                       Decimal               @db.Decimal(19, 4)
+  currency                     String                @default("USD") @db.Char(3)
+  authorizedAt                 DateTime?             @map("authorized_at")
+  postedAt                     DateTime?             @map("posted_at")
+  status                       TransactionStatus
+  providerCategory             String?               @map("provider_category")
+  providerCategoryConfidence   Decimal?              @map("provider_category_confidence") @db.Decimal(5, 4)
+  pendingProviderTransactionId String?               @map("pending_provider_transaction_id")
+  pendingTransactionId         String?               @map("pending_transaction_id")
+  pendingTransaction           Transaction?          @relation("PendingToPosted", fields: [pendingTransactionId], references: [id], onDelete: SetNull)
+  postedTransactions           Transaction[]         @relation("PendingToPosted")
+  rawProviderPayload           Json?                 @map("raw_provider_payload")
+  override                     TransactionOverride?  @relation("SourceTransactionOverride")
+  linkedByOverrides            TransactionOverride[] @relation("LinkedTransactionOverride")
+  calendarEvents               CalendarEvent[]
+  createdAt                    DateTime              @default(now()) @map("created_at")
+  updatedAt                    DateTime              @updatedAt @map("updated_at")
+
+  @@unique([accountId, providerTransactionId])
+  @@index([userId])
+  @@index([accountId, postedAt])
+  @@index([merchantName])
+  @@index([status])
+  @@index([pendingTransactionId])
+  @@map("transactions")
+}
+
+model TransactionOverride {
+  id                    String         @id @default(cuid())
+  userId                String         @map("user_id")
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId         String         @unique @map("transaction_id")
+  transaction           Transaction    @relation("SourceTransactionOverride", fields: [transactionId], references: [id], onDelete: Cascade)
+  merchantNameOverride  String?        @map("merchant_name_override")
+  categoryOverride      String?        @map("category_override")
+  financialRoleOverride FinancialRole? @map("financial_role_override")
+  notes                 String?
+  excludedFromReports   Boolean        @default(false) @map("excluded_from_reports")
+  linkedTransactionId   String?        @map("linked_transaction_id")
+  linkedTransaction     Transaction?   @relation("LinkedTransactionOverride", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([linkedTransactionId])
+  @@map("transaction_overrides")
+}
+
+model RecurringStream {
+  id                   String             @id @default(cuid())
+  userId               String             @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchantName         String?            @map("merchant_name")
+  description          String
+  flowType             RecurringFlowType  @map("flow_type")
+  frequency            RecurringFrequency
+  averageAmount        Decimal            @map("average_amount") @db.Decimal(19, 4)
+  lastAmount           Decimal            @map("last_amount") @db.Decimal(19, 4)
+  firstDate            DateTime           @map("first_date") @db.Date
+  lastDate             DateTime           @map("last_date") @db.Date
+  predictedNextDate    DateTime           @map("predicted_next_date") @db.Date
+  predictedPostingDate DateTime?          @map("predicted_posting_date") @db.Date
+  confirmedDueDate     DateTime?          @map("confirmed_due_date") @db.Date
+  dateSource           CalendarDateSource @map("date_source")
+  confidenceLevel      ConfidenceLevel    @map("confidence_level")
+  confidenceScore      Decimal?           @map("confidence_score") @db.Decimal(5, 4)
+  isActive             Boolean            @default(true) @map("is_active")
+  status               RecurringStatus    @default(ACTIVE)
+  category             String?
+  typicalAccountId     String?            @map("typical_account_id")
+  typicalAccount       Account?           @relation(fields: [typicalAccountId], references: [id], onDelete: NoAction)
+  calendarEvents       CalendarEvent[]
+  calendarOverrides    CalendarOverride[]
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, predictedNextDate])
+  @@index([typicalAccountId])
+  @@map("recurring_streams")
+}
+
+model CalendarEvent {
+  id                   String               @id @default(cuid())
+  userId               String               @map("user_id")
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recurringStreamId    String?              @map("recurring_stream_id")
+  recurringStream      RecurringStream?     @relation(fields: [recurringStreamId], references: [id], onDelete: SetNull)
+  accountId            String?              @map("account_id")
+  account              Account?             @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  linkedTransactionId  String?              @map("linked_transaction_id")
+  linkedTransaction    Transaction?         @relation(fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  eventType            CalendarEventType    @map("event_type")
+  title                String
+  eventDate            DateTime             @map("event_date") @db.Date
+  predictedPostingDate DateTime?            @map("predicted_posting_date") @db.Date
+  expectedAmount       Decimal?             @map("expected_amount") @db.Decimal(19, 4)
+  actualAmount         Decimal?             @map("actual_amount") @db.Decimal(19, 4)
+  currency             String               @default("USD") @db.Char(3)
+  dateSource           CalendarDateSource   @map("date_source")
+  amountSource         CalendarAmountSource @map("amount_source")
+  confidenceLevel      ConfidenceLevel      @map("confidence_level")
+  status               CalendarEventStatus
+  isUserConfirmed      Boolean              @default(false) @map("is_user_confirmed")
+  notes                String?
+  overrides            CalendarOverride[]
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, eventDate])
+  @@index([status, eventDate])
+  @@index([recurringStreamId])
+  @@index([accountId])
+  @@index([linkedTransactionId])
+  @@map("calendar_events")
+}
+
+model CalendarOverride {
+  id                     String               @id @default(cuid())
+  userId                 String               @map("user_id")
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendarEventId        String?              @map("calendar_event_id")
+  calendarEvent          CalendarEvent?       @relation(fields: [calendarEventId], references: [id], onDelete: Cascade)
+  recurringStreamId      String?              @map("recurring_stream_id")
+  recurringStream        RecurringStream?     @relation(fields: [recurringStreamId], references: [id], onDelete: Cascade)
+  confirmedDueDate       DateTime?            @map("confirmed_due_date") @db.Date
+  expectedAmountOverride Decimal?             @map("expected_amount_override") @db.Decimal(19, 4)
+  frequencyOverride      RecurringFrequency?  @map("frequency_override")
+  statusOverride         CalendarEventStatus? @map("status_override")
+  notABill               Boolean              @default(false) @map("not_a_bill")
+  notes                  String?
+  createdAt              DateTime             @default(now()) @map("created_at")
+  updatedAt              DateTime             @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([calendarEventId])
+  @@index([recurringStreamId])
+  @@map("calendar_overrides")
+}
+
+model InvestmentHolding {
+  id             String           @id @default(cuid())
+  userId         String           @map("user_id")
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId      String           @map("account_id")
+  account        Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  source         InvestmentSource
+  securityName   String           @map("security_name")
+  tickerSymbol   String?          @map("ticker_symbol")
+  securityType   String?          @map("security_type")
+  quantity       Decimal?         @db.Decimal(28, 10)
+  price          Decimal?         @db.Decimal(19, 4)
+  currentValue   Decimal          @map("current_value") @db.Decimal(19, 4)
+  costBasis      Decimal?         @map("cost_basis") @db.Decimal(19, 4)
+  vestedQuantity Decimal?         @map("vested_quantity") @db.Decimal(28, 10)
+  vestedValue    Decimal?         @map("vested_value") @db.Decimal(19, 4)
+  currency       String           @default("USD") @db.Char(3)
+  asOfDate       DateTime         @map("as_of_date")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([accountId, asOfDate])
+  @@index([tickerSymbol])
+  @@map("investment_holdings")
+}
+
+model InvestmentBalanceSnapshot {
+  id          String           @id @default(cuid())
+  userId      String           @map("user_id")
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId   String           @map("account_id")
+  account     Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  totalValue  Decimal          @map("total_value") @db.Decimal(19, 4)
+  vestedValue Decimal?         @map("vested_value") @db.Decimal(19, 4)
+  source      InvestmentSource
+  asOfDate    DateTime         @map("as_of_date")
+  notes       String?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@unique([accountId, source, asOfDate])
+  @@index([userId])
+  @@index([accountId, asOfDate])
+  @@map("investment_balance_snapshots")
+}
+
+model InvestmentTransaction {
+  id                              String                    @id @default(cuid())
+  userId                          String                    @map("user_id")
+  user                            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId                       String                    @map("account_id")
+  account                         Account                   @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  source                          InvestmentSource
+  providerInvestmentTransactionId String?                   @map("provider_investment_transaction_id")
+  transactionDate                 DateTime                  @map("transaction_date")
+  transactionType                 InvestmentTransactionType @map("transaction_type")
+  securityName                    String?                   @map("security_name")
+  tickerSymbol                    String?                   @map("ticker_symbol")
+  amount                          Decimal?                  @db.Decimal(19, 4)
+  quantity                        Decimal?                  @db.Decimal(28, 10)
+  price                           Decimal?                  @db.Decimal(19, 4)
+  fees                            Decimal?                  @db.Decimal(19, 4)
+  currency                        String                    @default("USD") @db.Char(3)
+  rawPayload                      Json?                     @map("raw_payload")
+  createdAt                       DateTime                  @default(now()) @map("created_at")
+  updatedAt                       DateTime                  @updatedAt @map("updated_at")
+
+  @@unique([accountId, providerInvestmentTransactionId])
+  @@index([userId])
+  @@index([accountId, transactionDate])
+  @@index([tickerSymbol])
+  @@map("investment_transactions")
+}
+
+model ManualAsset {
+  id           String          @id @default(cuid())
+  userId       String          @map("user_id")
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  assetType    ManualAssetType @map("asset_type")
+  currentValue Decimal         @map("current_value") @db.Decimal(19, 4)
+  costBasis    Decimal?        @map("cost_basis") @db.Decimal(19, 4)
+  currency     String          @default("USD") @db.Char(3)
+  acquiredAt   DateTime?       @map("acquired_at") @db.Date
+  isDebt       Boolean         @default(false) @map("is_debt")
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, assetType, isDebt])
+  @@map("manual_assets")
+}
+
+model BalanceSnapshot {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId        String   @map("account_id")
+  account          Account  @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  currentBalance   Decimal  @map("current_balance") @db.Decimal(19, 4)
+  availableBalance Decimal? @map("available_balance") @db.Decimal(19, 4)
+  capturedAt       DateTime @map("captured_at")
+
+  @@unique([accountId, capturedAt])
+  @@index([userId])
+  @@index([accountId, capturedAt(sort: Desc)])
+  @@map("balance_snapshots")
+}
+
+model ImportJob {
+  id               String       @id @default(cuid())
+  userId           String       @map("user_id")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSourceId     String       @map("data_source_id")
+  dataSource       DataSource   @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
+  sourceName       String       @map("source_name")
+  importType       ImportType   @map("import_type")
+  status           ImportStatus @default(PENDING)
+  importedRowCount Int          @default(0) @map("imported_row_count")
+  rejectedRowCount Int          @default(0) @map("rejected_row_count")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  completedAt      DateTime?    @map("completed_at")
+
+  @@index([userId])
+  @@index([dataSourceId])
+  @@index([userId, status, createdAt])
+  @@map("import_jobs")
 }
