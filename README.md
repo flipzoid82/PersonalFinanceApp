@@ -1,6 +1,6 @@
 # Personal Finance Dashboard
 
-A private, single-owner personal finance dashboard. Milestone 2 provides a normalized, provider-neutral PostgreSQL data model and synthetic development fixtures while intentionally leaving the dashboard pages as placeholders.
+A private, single-owner personal finance dashboard. Milestone 3 provides a functional, read-only Overview backed by normalized synthetic PostgreSQL records. No financial institution is connected, and every bundled financial value is fake.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ A private, single-owner personal finance dashboard. Milestone 2 provides a norma
 - `pnpm db:generate` — generate Prisma Client
 - `pnpm db:migrate` — create/apply development migrations
 - `pnpm db:deploy` — apply checked-in migrations without creating new ones
-- `pnpm db:seed` — idempotently load synthetic Milestone 2 records
+- `pnpm db:seed` — idempotently load synthetic Milestone 3 dashboard records
 - `pnpm db:studio` — inspect the development database
 
 To run the destructive model tests locally, create a separate database whose name contains `test`, migrate it, and provide it only through `TEST_DATABASE_URL`. The tests refuse to run against a URL whose database name does not contain `test`.
@@ -49,7 +49,28 @@ pnpm test
 
 For a clean local reset, first confirm that `DATABASE_URL` points to the disposable development database, then run `pnpm exec prisma migrate reset`. This deletes all data, replays every migration, and runs the synthetic seed. Never run it against a database containing data you need to keep.
 
-## Milestone 2 data model
+## Milestone 3 demo dashboard
+
+After `pnpm db:seed`, the authenticated Overview displays:
+
+- Net worth, cash, available cash, card debt, credit utilization, investments, current-month income/spending/cash flow, and upcoming bills
+- Active account balances with synced/imported/manual source labels
+- Posted and pending recent transactions with effective local overrides
+- Accessible spending-category bars with a text equivalent
+- Predicted and confirmed upcoming activity from existing calendar events
+- Investment accounts using one current value per account
+- A 30-day, snapshot-backed tracked-net-worth trend
+- Provider-neutral freshness, stale, disconnected, error, partial, loading, empty, and error behavior
+
+Finalized monthly metrics use posted transactions with an explicit financial-role override. Pending transactions, transfers, card payments, investment activity, ignored rows, and report-excluded rows do not affect income or spending. Expense overrides take precedence over provider display fields, and explicitly classified refunds reduce their effective spending category. No original transaction is mutated.
+
+Investment totals use the latest balance snapshot for each investment account, falling back to that account's normalized current balance. Holdings are display/audit detail and are not added again. Current net worth adds cash, one value per investment account, other active asset accounts, and manual assets, then subtracts card/loan/mortgage/manual debts. The historical trend uses only stored account and investment snapshots and is labeled partial when manual-asset history is unavailable.
+
+Money calculations remain in Prisma `Decimal` until final locale-aware formatting. Dashboard calendar boundaries currently use UTC because the owner profile has no time-zone field. Aggregate demo totals assume the seeded USD currency; individual account and transaction rows retain their own currency labels. Sources become stale after seven days without a relevant update.
+
+All non-Overview financial pages remain placeholders. There is no live sync, editing, importing, recurring detection, calendar generation, payment matching, performance analysis, or production integration.
+
+## Data model
 
 The schema normalizes data from Plaid, CSV imports, manual entry, Fidelity files, and future providers into shared internal records:
 
@@ -61,7 +82,7 @@ The schema normalizes data from Plaid, CSV imports, manual entry, Fidelity files
 
 All financial root records carry `userId`; balance snapshots are also directly owner-scoped so a full owner purge can coexist with account-delete protection. Secondary foreign keys prevent an in-use data source or account from being deleted. Provider-connection deletion only nulls the optional account connection link, and source overrides cascade with the source record. See [the Milestone 2 architecture note](docs/architecture-milestone-2.md) for the complete relationship policy.
 
-Money uses PostgreSQL `DECIMAL(19,4)` through Prisma `Decimal`, never floating point. It supports 15 whole-number digits and four fractional digits. Security quantities use `DECIMAL(28,10)`. Currency fields contain three-character ISO-4217 codes and default to `USD`. Debt balances and manual debt values are stored as positive amounts owed; the account type or `isDebt` flag supplies the financial meaning. No totals or sign transformations are calculated in Milestone 2.
+Money uses PostgreSQL `DECIMAL(19,4)` through Prisma `Decimal`, never floating point. It supports 15 whole-number digits and four fractional digits. Security quantities use `DECIMAL(28,10)`. Currency fields contain three-character ISO-4217 codes and default to `USD`. Debt balances and manual debt values are stored as positive amounts owed; the account type or `isDebt` flag supplies the financial meaning.
 
 ## Environment
 
@@ -69,6 +90,6 @@ All required variables are described in `.env.example`. Startup fails with field
 
 ## Current status
 
-Milestone 2 includes the complete core Prisma model, stable domain enums, indexed ownership and lookup paths, contextual provider-ID uniqueness, exact money storage, migration history, safe synthetic seed data, PostgreSQL model tests, and CI database coverage. Milestone 1 owner-only authentication, protected routes, responsive navigation, placeholder pages, environment validation, and UI smoke tests remain intact.
+Milestone 3 includes the authenticated demo Overview, server-only owner-scoped queries, decimal-safe calculations, responsive and accessible dashboard panels, dynamic synthetic fixtures, and PostgreSQL integration coverage. Milestone 1 owner-only authentication and Milestone 2's provider-neutral schema and migration history remain intact.
 
-No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, manual-entry UI, business calculation, categorization, recurring detection, event generation, payment matching, investment analysis, dashboard data wiring, multi-user feature, or production deployment exists yet. See `docs/Plan Docs/build-plan.md` for the future sequence.
+No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, manual-entry UI, recurring detection, event generation, payment matching, investment performance analysis, multi-user feature, or production deployment exists yet. See `docs/Plan Docs/build-plan.md` for the future sequence.
