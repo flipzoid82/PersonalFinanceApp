@@ -19,7 +19,10 @@ export default async function DashboardLayout({
             Signed in as {user.displayName ?? user.email}
           </p>
           <form action={logout}>
-            <Button className="min-h-9 bg-white px-3 text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">
+            <Button
+              type="submit"
+              className="min-h-9 bg-white px-3 text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+            >
               Sign out
             </Button>
           </form>
