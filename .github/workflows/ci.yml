@@ -27,7 +27,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://finance:finance_test_only@localhost:5432/personal_finance_test?schema=public
       APP_URL: http://localhost:3000
       AUTH_SECRET: ci-only-auth-secret-at-least-32-characters
-      TOKEN_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      TOKEN_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
