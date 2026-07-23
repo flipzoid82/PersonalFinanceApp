@@ -1,6 +1,6 @@
 # Build Plan
 
-## Cross-Milestone Visual Semantics
+## Cross-Milestone Visual Semantics and Theme Support
 
 The application will use a shared semantic color system as a secondary visual cue.
 
@@ -17,12 +17,16 @@ Rules:
 
 - Color must never be the only way meaning is communicated.
 - Every semantic state must also use text, signs, icons, labels, or another non-color cue.
-- Semantic styles should be centralized in reusable tokens, utilities, variants, or shared components.
-- Contrast must remain accessible.
-- Milestone 5 introduces the shared system.
-- Milestone 9 extends it across Bills and Spending.
-- Milestone 10 completes the rollout across Net Worth and Investment views.
-- Milestone 12 includes a final accessibility and contrast audit.
+- Semantic styles must be centralized in reusable theme tokens, utilities, variants, or shared components.
+- Support light, dark, and system theme preferences.
+- Respect the system theme when the user has not selected an explicit preference.
+- Persist the user's explicit theme preference.
+- Contrast must remain accessible in both light and dark themes.
+- Charts, badges, forms, tables, alerts, and financial values must remain understandable in both themes.
+- Milestone 5 introduces theme-aware semantic tokens.
+- Milestone 9 extends semantic styling across Bills and Spending.
+- Milestone 10 adds user-facing theme controls and completes dark-mode coverage across existing pages.
+- Milestone 12 includes a final accessibility, contrast, and theme-persistence audit.
 
 ## Milestone 1: Project Foundation
 
@@ -93,10 +97,11 @@ Do not implement Plaid in this milestone.
 - Add known Fidelity account setup
 - Include manual investments in net worth
 - Show data source and last updated time
-- Introduce shared semantic color tokens and reusable variants
+- Introduce theme-aware semantic color tokens and reusable variants
 - Apply semantic styling to assets, debts, investments, freshness, and status labels
 - Ensure every color-coded state also has text, a sign, an icon, or another non-color cue
-- Add accessibility and regression tests for semantic variants
+- Ensure all new Milestone 5 components render correctly in light and dark themes
+- Add accessibility and regression tests for semantic variants and theme behavior
 
 ## Milestone 6: Plaid Sandbox
 
@@ -139,7 +144,7 @@ Do not implement Plaid in this milestone.
 - Add unusual-spending indicators
 - Extend semantic styling to spending, bills, overdue states, warnings, expense categories, and negative cash flow
 - Keep status and category meaning understandable without color
-- Standardize chart legends, labels, and accessible text equivalents
+- Standardize chart legends, labels, and accessible text equivalents in both themes
 
 ## Milestone 10: Net Worth and Investment Views
 
@@ -150,9 +155,13 @@ Do not implement Plaid in this milestone.
 - Add allocation view where available
 - Add freshness indicators
 - Make synced, imported, and manual values distinct
+- Add a user-facing theme control with Light, Dark, and System options
+- Persist the user's explicit theme preference
+- Respect the system theme when no explicit preference is stored
+- Complete dark-mode support across existing application pages
 - Complete semantic styling across assets, debts, investments, and trend views
 - Standardize positive and negative value presentation without relying on color alone
-- Verify investment and net-worth charts use accessible legends and summaries
+- Verify investment and net-worth charts use accessible legends and summaries in both themes
 
 ## Milestone 11: CSV Import
 
@@ -174,6 +183,8 @@ Do not implement Plaid in this milestone.
 - Production deployment
 - Plaid Production Trial setup
 - Connect real institutions only after Sandbox validation
-- Audit semantic colors for accessible contrast
+- Audit semantic colors for accessible contrast in light and dark themes
 - Verify no financial value, status, confidence level, or warning relies on color alone
+- Verify charts, badges, forms, tables, alerts, and financial values remain readable in both themes
+- Verify theme preference persistence and system-theme behavior
 - Verify semantic styling remains consistent across responsive layouts
