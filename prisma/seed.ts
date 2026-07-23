@@ -103,7 +103,7 @@ export async function seedDevelopmentData(
       where: { id: "seed_source_manual" },
       update: {
         userId: owner.id,
-        status: DataSourceStatus.ACTIVE,
+        status: DataSourceStatus.NEEDS_ATTENTION,
         lastUpdatedAt: day(-10),
       },
       create: {
@@ -111,7 +111,7 @@ export async function seedDevelopmentData(
         userId: owner.id,
         sourceType: DataSourceType.MANUAL,
         displayName: "Synthetic Manual Records",
-        status: DataSourceStatus.ACTIVE,
+        status: DataSourceStatus.NEEDS_ATTENTION,
         lastUpdatedAt: day(-10),
       },
     });
@@ -513,6 +513,408 @@ export async function seedDevelopmentData(
       },
     });
 
+    const highMatchTransaction = await classifiedTransaction({
+      transaction: {
+        id: "seed_transaction_calendar_high_match",
+        userId: owner.id,
+        accountId: checking.id,
+        providerTransactionId: "synthetic-calendar-high-match-001",
+        originalName: "SYNTHETIC INTERNET SERVICE",
+        merchantName: "Example Internet",
+        amount: money("79.9900"),
+        postedAt: day(0),
+        status: TransactionStatus.POSTED,
+        providerCategory: "Utilities",
+      },
+      role: FinancialRole.EXPENSE,
+      category: "Home Utilities",
+      excluded: true,
+    });
+    const paidTransaction = await classifiedTransaction({
+      transaction: {
+        id: "seed_transaction_calendar_paid",
+        userId: owner.id,
+        accountId: credit.id,
+        providerTransactionId: "synthetic-calendar-paid-001",
+        originalName: "SYNTHETIC VIDEO STREAMING",
+        merchantName: "Example Video",
+        amount: money("14.9900"),
+        postedAt: day(-2),
+        status: TransactionStatus.POSTED,
+        providerCategory: "Entertainment",
+      },
+      role: FinancialRole.EXPENSE,
+      category: "Subscriptions",
+      excluded: true,
+    });
+    await tx.transaction.upsert({
+      where: { id: "seed_transaction_calendar_low_match" },
+      update: {
+        userId: owner.id,
+        accountId: credit.id,
+        postedAt: day(0),
+        status: TransactionStatus.POSTED,
+      },
+      create: {
+        id: "seed_transaction_calendar_low_match",
+        userId: owner.id,
+        accountId: credit.id,
+        providerTransactionId: "synthetic-calendar-low-match-001",
+        originalName: "SYNTHETIC INSURANCE CHARGE",
+        merchantName: "Example Insurance",
+        amount: money("101.2500"),
+        postedAt: day(0),
+        status: TransactionStatus.POSTED,
+      },
+    });
+
+    const recurring = async (
+      id: string,
+      values: {
+        name: string;
+        flowType: RecurringFlowType;
+        frequency?: RecurringFrequency;
+        amount: string;
+        date: Date;
+        postingDate?: Date | null;
+        dueDate?: Date | null;
+        confidence: ConfidenceLevel;
+        status?: RecurringStatus;
+        accountId?: string | null;
+        active?: boolean;
+      },
+    ) => {
+      const data = {
+        userId: owner.id,
+        merchantName: values.name,
+        description: `Synthetic recurring stream for ${values.name}`,
+        flowType: values.flowType,
+        frequency: values.frequency ?? RecurringFrequency.MONTHLY,
+        averageAmount: money(values.amount),
+        lastAmount: money(values.amount),
+        firstDate: day(-180),
+        lastDate: day(-30),
+        predictedNextDate: values.date,
+        predictedPostingDate: values.postingDate ?? values.date,
+        confirmedDueDate: values.dueDate ?? null,
+        dateSource: values.dueDate
+          ? CalendarDateSource.USER_CONFIRMED
+          : CalendarDateSource.INFERRED,
+        confidenceLevel: values.confidence,
+        confidenceScore:
+          values.confidence === ConfidenceLevel.HIGH
+            ? money("0.9500")
+            : values.confidence === ConfidenceLevel.MEDIUM
+              ? money("0.7000")
+              : values.confidence === ConfidenceLevel.LOW
+                ? money("0.4200")
+                : null,
+        isActive: values.active ?? true,
+        status: values.status ?? RecurringStatus.ACTIVE,
+        category: values.flowType.toLowerCase().replaceAll("_", " "),
+        typicalAccountId: values.accountId ?? checking.id,
+      };
+      return tx.recurringStream.upsert({
+        where: { id },
+        update: data,
+        create: { id, ...data },
+      });
+    };
+    const occurrence = async (
+      id: string,
+      values: {
+        streamId: string;
+        title: string;
+        type: CalendarEventType;
+        date: Date;
+        amount?: string | null;
+        amountSource?: CalendarAmountSource;
+        postingDate?: Date | null;
+        dateSource?: CalendarDateSource;
+        confidence: ConfidenceLevel;
+        status: CalendarEventStatus;
+        accountId?: string | null;
+        confirmed?: boolean;
+        linkedTransactionId?: string | null;
+        actualAmount?: string | null;
+        notes?: string;
+      },
+    ) => {
+      const data = {
+        userId: owner.id,
+        recurringStreamId: values.streamId,
+        accountId:
+          values.accountId === undefined ? checking.id : values.accountId,
+        linkedTransactionId: values.linkedTransactionId ?? null,
+        eventType: values.type,
+        title: values.title,
+        eventDate: values.date,
+        predictedPostingDate: values.postingDate ?? values.date,
+        expectedAmount:
+          values.amount === null ? null : money(values.amount ?? "0.0000"),
+        actualAmount: values.actualAmount ? money(values.actualAmount) : null,
+        dateSource: values.dateSource ?? CalendarDateSource.INFERRED,
+        amountSource: values.amountSource ?? CalendarAmountSource.FIXED,
+        confidenceLevel: values.confidence,
+        status: values.status,
+        isUserConfirmed: values.confirmed ?? false,
+        notes: values.notes ?? null,
+      };
+      return tx.calendarEvent.upsert({
+        where: { id },
+        update: data,
+        create: { id, ...data },
+      });
+    };
+
+    const subscriptionStream = await recurring("seed_recurring_subscription", {
+      name: "Example Music",
+      flowType: RecurringFlowType.SUBSCRIPTION,
+      amount: "12.9900",
+      date: day(5),
+      confidence: ConfidenceLevel.MEDIUM,
+      accountId: credit.id,
+    });
+    await occurrence("seed_calendar_subscription", {
+      streamId: subscriptionStream.id,
+      title: "Example Music subscription",
+      type: CalendarEventType.SUBSCRIPTION,
+      date: day(5),
+      amount: "12.9900",
+      amountSource: CalendarAmountSource.LAST_OBSERVED,
+      confidence: ConfidenceLevel.MEDIUM,
+      status: CalendarEventStatus.PREDICTED,
+      accountId: credit.id,
+    });
+
+    const debtStream = await recurring("seed_recurring_debt", {
+      name: "Example Auto Loan",
+      flowType: RecurringFlowType.DEBT_PAYMENT,
+      amount: "325.0000",
+      date: day(10),
+      dueDate: day(10),
+      postingDate: day(11),
+      confidence: ConfidenceLevel.HIGH,
+    });
+    await occurrence("seed_calendar_debt", {
+      streamId: debtStream.id,
+      title: "Example auto loan payment",
+      type: CalendarEventType.DEBT_PAYMENT,
+      date: day(10),
+      postingDate: day(11),
+      amount: "325.0000",
+      confidence: ConfidenceLevel.HIGH,
+      status: CalendarEventStatus.CONFIRMED,
+      dateSource: CalendarDateSource.USER_CONFIRMED,
+      confirmed: true,
+    });
+
+    const cardStream = await recurring("seed_recurring_card_payment", {
+      name: "Example Rewards Card",
+      flowType: RecurringFlowType.CREDIT_CARD_PAYMENT,
+      amount: "800.0000",
+      date: day(12),
+      dueDate: day(12),
+      confidence: ConfidenceLevel.MEDIUM,
+    });
+    await occurrence("seed_calendar_card_payment", {
+      streamId: cardStream.id,
+      title: "Example credit-card payment",
+      type: CalendarEventType.CREDIT_CARD_PAYMENT,
+      date: day(12),
+      amount: "800.0000",
+      confidence: ConfidenceLevel.MEDIUM,
+      status: CalendarEventStatus.CONFIRMED,
+      dateSource: CalendarDateSource.USER_CONFIRMED,
+      confirmed: true,
+    });
+
+    const incomeStream = await recurring("seed_recurring_income", {
+      name: "Example Employer",
+      flowType: RecurringFlowType.EXPECTED_INCOME,
+      frequency: RecurringFrequency.BIWEEKLY,
+      amount: "4250.0000",
+      date: day(5),
+      dueDate: day(5),
+      confidence: ConfidenceLevel.HIGH,
+    });
+    await occurrence("seed_calendar_income", {
+      streamId: incomeStream.id,
+      title: "Expected synthetic paycheck",
+      type: CalendarEventType.EXPECTED_INCOME,
+      date: day(5),
+      amount: "4250.0000",
+      confidence: ConfidenceLevel.HIGH,
+      status: CalendarEventStatus.CONFIRMED,
+      dateSource: CalendarDateSource.USER_CONFIRMED,
+      confirmed: true,
+    });
+
+    const needsStream = await recurring("seed_recurring_needs_confirmation", {
+      name: "Example Insurance Premium",
+      flowType: RecurringFlowType.BILL,
+      amount: "100.0000",
+      date: day(5),
+      confidence: ConfidenceLevel.NEEDS_CONFIRMATION,
+      status: RecurringStatus.NEEDS_CONFIRMATION,
+    });
+    await occurrence("seed_calendar_needs_confirmation", {
+      streamId: needsStream.id,
+      title: "Possible insurance premium",
+      type: CalendarEventType.BILL,
+      date: day(5),
+      amount: "100.0000",
+      amountSource: CalendarAmountSource.ESTIMATED,
+      confidence: ConfidenceLevel.NEEDS_CONFIRMATION,
+      status: CalendarEventStatus.NEEDS_CONFIRMATION,
+    });
+
+    const paidStream = await recurring("seed_recurring_paid", {
+      name: "Example Video",
+      flowType: RecurringFlowType.SUBSCRIPTION,
+      amount: "14.9900",
+      date: day(-2),
+      confidence: ConfidenceLevel.HIGH,
+      accountId: credit.id,
+    });
+    await occurrence("seed_calendar_paid", {
+      streamId: paidStream.id,
+      title: "Example Video subscription",
+      type: CalendarEventType.SUBSCRIPTION,
+      date: day(-2),
+      amount: "14.9900",
+      confidence: ConfidenceLevel.HIGH,
+      status: CalendarEventStatus.PAID,
+      accountId: credit.id,
+      linkedTransactionId: paidTransaction.id,
+      actualAmount: "14.9900",
+    });
+
+    const skippedStream = await recurring("seed_recurring_skipped", {
+      name: "Example Lawn Service",
+      flowType: RecurringFlowType.BILL,
+      amount: "55.0000",
+      date: day(9),
+      dueDate: day(9),
+      confidence: ConfidenceLevel.MEDIUM,
+    });
+    await occurrence("seed_calendar_skipped", {
+      streamId: skippedStream.id,
+      title: "Example lawn service",
+      type: CalendarEventType.BILL,
+      date: day(9),
+      amount: "55.0000",
+      confidence: ConfidenceLevel.MEDIUM,
+      status: CalendarEventStatus.SKIPPED,
+      dateSource: CalendarDateSource.USER_CONFIRMED,
+      confirmed: true,
+    });
+
+    const inactiveStream = await recurring("seed_recurring_inactive", {
+      name: "Example Archived Service",
+      flowType: RecurringFlowType.SUBSCRIPTION,
+      amount: "8.0000",
+      date: day(11),
+      confidence: ConfidenceLevel.LOW,
+      active: false,
+      status: RecurringStatus.INACTIVE,
+    });
+    await occurrence("seed_calendar_inactive", {
+      streamId: inactiveStream.id,
+      title: "Example archived subscription",
+      type: CalendarEventType.SUBSCRIPTION,
+      date: day(11),
+      amount: "8.0000",
+      confidence: ConfidenceLevel.LOW,
+      status: CalendarEventStatus.INACTIVE,
+    });
+
+    const manualStream = await recurring("seed_recurring_manual", {
+      name: "Manual club dues",
+      flowType: RecurringFlowType.OTHER,
+      frequency: RecurringFrequency.QUARTERLY,
+      amount: "45.0000",
+      date: day(13),
+      dueDate: day(13),
+      confidence: ConfidenceLevel.HIGH,
+      accountId: null,
+    });
+    await occurrence("seed_calendar_manual", {
+      streamId: manualStream.id,
+      title: "Manual club dues",
+      type: CalendarEventType.OTHER_RECURRING,
+      date: day(13),
+      postingDate: null,
+      amount: "45.0000",
+      amountSource: CalendarAmountSource.MANUAL,
+      dateSource: CalendarDateSource.MANUAL,
+      confidence: ConfidenceLevel.HIGH,
+      status: CalendarEventStatus.CONFIRMED,
+      accountId: null,
+      confirmed: true,
+      notes: "Clearly labeled synthetic manual event.",
+    });
+
+    const matchStream = await recurring("seed_recurring_high_match", {
+      name: "Example Internet",
+      flowType: RecurringFlowType.BILL,
+      amount: "79.9900",
+      date: day(2),
+      confidence: ConfidenceLevel.HIGH,
+    });
+    await occurrence("seed_calendar_high_match", {
+      streamId: matchStream.id,
+      title: "Example Internet bill",
+      type: CalendarEventType.BILL,
+      date: day(2),
+      amount: "79.9900",
+      confidence: ConfidenceLevel.HIGH,
+      status: CalendarEventStatus.PREDICTED,
+      notes: `Suggested posted transaction ${highMatchTransaction.id} is not accepted until the owner acts.`,
+    });
+
+    const monthBoundary = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 0),
+    );
+    const boundaryStream = await recurring("seed_recurring_month_boundary", {
+      name: "Example Month-End Storage",
+      flowType: RecurringFlowType.BILL,
+      amount: "62.5000",
+      date: monthBoundary,
+      confidence: ConfidenceLevel.LOW,
+    });
+    await occurrence("seed_calendar_month_boundary", {
+      streamId: boundaryStream.id,
+      title: "Example month-end storage",
+      type: CalendarEventType.BILL,
+      date: monthBoundary,
+      amount: "62.5000",
+      amountSource: CalendarAmountSource.ESTIMATED,
+      confidence: ConfidenceLevel.LOW,
+      status: CalendarEventStatus.PREDICTED,
+    });
+
+    const partialStream = await recurring("seed_recurring_partial", {
+      name: "Example Variable Assessment",
+      flowType: RecurringFlowType.OTHER,
+      amount: "1.0000",
+      date: day(20),
+      confidence: ConfidenceLevel.LOW,
+      accountId: retirement.id,
+    });
+    await occurrence("seed_calendar_partial", {
+      streamId: partialStream.id,
+      title: "Example variable assessment",
+      type: CalendarEventType.OTHER_RECURRING,
+      date: day(20),
+      amount: null,
+      amountSource: CalendarAmountSource.ESTIMATED,
+      confidence: ConfidenceLevel.LOW,
+      status: CalendarEventStatus.PREDICTED,
+      accountId: retirement.id,
+      notes: "Amount unavailable until the next synthetic statement.",
+    });
+
     await tx.investmentHolding.upsert({
       where: { id: "seed_holding_imported" },
       update: { userId: owner.id, accountId: brokerage.id, asOfDate: day(0) },
@@ -772,7 +1174,7 @@ if (process.env.NODE_ENV !== "test") {
   seedDevelopmentData()
     .then(({ ownerId }) => {
       console.log(
-        `Synthetic Milestone 3 dashboard data seeded for owner ${ownerId}.`,
+        `Synthetic Milestone 4 calendar and dashboard data seeded for owner ${ownerId}.`,
       );
     })
     .finally(() => prisma.$disconnect());

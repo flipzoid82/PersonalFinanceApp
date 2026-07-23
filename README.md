@@ -1,6 +1,6 @@
 # Personal Finance Dashboard
 
-A private, single-owner personal finance dashboard. Milestone 3 provides a functional, read-only Overview backed by normalized synthetic PostgreSQL records. No financial institution is connected, and every bundled financial value is fake.
+A private, single-owner personal finance dashboard. Milestone 4 provides a functional Calendar and recurring-event workflow alongside the Milestone 3 Overview, all backed by normalized synthetic PostgreSQL records. No financial institution is connected, and every bundled financial value is fake.
 
 ## Prerequisites
 
@@ -35,7 +35,7 @@ A private, single-owner personal finance dashboard. Milestone 3 provides a funct
 - `pnpm db:generate` — generate Prisma Client
 - `pnpm db:migrate` — create/apply development migrations
 - `pnpm db:deploy` — apply checked-in migrations without creating new ones
-- `pnpm db:seed` — idempotently load synthetic Milestone 3 dashboard records
+- `pnpm db:seed` — idempotently load synthetic Milestone 4 calendar and dashboard records
 - `pnpm db:studio` — inspect the development database
 
 To run the destructive model tests locally, create a separate database whose name contains `test`, migrate it, and provide it only through `TEST_DATABASE_URL`. The tests refuse to run against a URL whose database name does not contain `test`.
@@ -68,7 +68,28 @@ Investment totals use the latest balance snapshot for each investment account, f
 
 Money calculations remain in Prisma `Decimal` until final locale-aware formatting. Dashboard calendar boundaries currently use UTC because the owner profile has no time-zone field. Aggregate demo totals assume the seeded USD currency; individual account and transaction rows retain their own currency labels. Sources become stale after seven days without a relevant update.
 
-All non-Overview financial pages remain placeholders. There is no live sync, editing, importing, recurring detection, calendar generation, payment matching, performance analysis, or production integration.
+Accounts, Transactions, Bills, Spending, Investments, Net Worth, and Settings remain placeholders. There is no live sync, importing, recurring-pattern detection, automatic event generation, performance analysis, or production integration.
+
+## Milestone 4 calendar and recurring events
+
+The authenticated Calendar provides:
+
+- A keyboard-accessible traditional month grid with previous/next and current-month navigation, concise event summaries, selected-day details, and a chronological list alternative
+- An upcoming list with inclusive 14, 30, 60, and 90-day UTC ranges; 30 days is the default
+- URL-backed filters for every supported event type, confirmed dates, predicted dates, and needs-confirmation items
+- Text labels for predicted versus confirmed dates, expected-amount source, confidence, source, and status
+- Separate display of a confirmed due date and supplemental predicted posting date
+- Owner-scoped actions to confirm a prediction, correct due date/amount/frequency, update notes, mark paid/skipped/not-a-bill, deactivate a stream, accept a payment match, and create a manual recurring event
+
+Corrections append `CalendarOverride` snapshots instead of modifying inferred, provider, or imported values. Effective precedence is event override, stream override, user-confirmed event fields, source event fields, then recurring-stream fallback. Confirmed due dates are always primary. Predicted posting dates are estimates and never presented as contractual due dates.
+
+An occurrence is overdue only when it has a confirmed past due date, has no accepted posted transaction, and is not paid, skipped, inactive, or dismissed as not a bill. Predicted-only occurrences are never overdue. Inactive and skipped items remain visible in their month for history but are excluded from the default upcoming list.
+
+Payment matching considers only posted transactions in the same currency. It scores the normalized recurring merchant/description identity, account, Decimal-safe amount tolerance (the greater of 5 currency units or 10%), posting-date proximity within seven days, and compatible financial role. An unclassified transaction cannot become a high-confidence match. Strong matches can be accepted directly; lower-confidence suggestions require an explicit confirmation. Acceptance links the normalized transaction and records the absolute actual amount without changing transaction source fields. Manual “mark paid” remains available when no transaction should be linked.
+
+The seed includes clearly fake examples for every event type and confidence level, predicted and confirmed dates, a confirmed due date with a separate posting prediction, fixed and estimated amounts, paid/skipped/inactive/manual/needs-confirmation states, a month boundary, multiple events on one date, and both high- and low-confidence matching scenarios. Run `pnpm db:seed` more than once safely; no recurring detection or future-occurrence generation is performed.
+
+Calendar freshness uses the existing seven-day threshold. Missing amounts or sources needing attention produce a partial-data notice while keeping available records visible. All calendar dates use UTC because the owner profile does not yet include a time zone. Currency is displayed per record, but conversion or aggregation across currencies is not implemented.
 
 ## Data model
 
@@ -90,6 +111,6 @@ All required variables are described in `.env.example`. Startup fails with field
 
 ## Current status
 
-Milestone 3 includes the authenticated demo Overview, server-only owner-scoped queries, decimal-safe calculations, responsive and accessible dashboard panels, dynamic synthetic fixtures, and PostgreSQL integration coverage. Milestone 1 owner-only authentication and Milestone 2's provider-neutral schema and migration history remain intact.
+Milestone 4 includes authenticated month and upcoming Calendar views, effective override handling, secure owner-scoped mutations, manual recurring events, deterministic posted-payment matching, responsive/accessibility states, expanded synthetic fixtures, and PostgreSQL integration coverage. Milestone 3 Overview calculations, Milestone 1 owner-only authentication, and Milestone 2's provider-neutral schema and migration history remain intact.
 
-No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, manual-entry UI, recurring detection, event generation, payment matching, investment performance analysis, multi-user feature, or production deployment exists yet. See `docs/Plan Docs/build-plan.md` for the future sequence.
+No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, recurring-pattern detection, automatic event generation, bill payment, investment performance analysis, multi-user feature, or production deployment exists yet. Manual asset and investment workflows remain Milestone 5 work. See `docs/Plan Docs/build-plan.md` for the future sequence.
