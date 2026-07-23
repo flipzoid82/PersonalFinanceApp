@@ -1,5 +1,29 @@
 # Build Plan
 
+## Cross-Milestone Visual Semantics
+
+The application will use a shared semantic color system as a secondary visual cue.
+
+Required meanings:
+
+- Positive, income, assets, and paid: green
+- Negative, spending, debt, and overdue: red
+- Warning, predicted, stale, medium confidence, and needs attention: amber
+- Informational, confirmed, and synced: blue
+- Investments: purple
+- Inactive, skipped, unavailable, and muted: gray
+
+Rules:
+
+- Color must never be the only way meaning is communicated.
+- Every semantic state must also use text, signs, icons, labels, or another non-color cue.
+- Semantic styles should be centralized in reusable tokens, utilities, variants, or shared components.
+- Contrast must remain accessible.
+- Milestone 5 introduces the shared system.
+- Milestone 9 extends it across Bills and Spending.
+- Milestone 10 completes the rollout across Net Worth and Investment views.
+- Milestone 12 includes a final accessibility and contrast audit.
+
 ## Milestone 1: Project Foundation
 
 - Create Next.js application with TypeScript
@@ -69,6 +93,10 @@ Do not implement Plaid in this milestone.
 - Add known Fidelity account setup
 - Include manual investments in net worth
 - Show data source and last updated time
+- Introduce shared semantic color tokens and reusable variants
+- Apply semantic styling to assets, debts, investments, freshness, and status labels
+- Ensure every color-coded state also has text, a sign, an icon, or another non-color cue
+- Add accessibility and regression tests for semantic variants
 
 ## Milestone 6: Plaid Sandbox
 
@@ -109,6 +137,9 @@ Do not implement Plaid in this milestone.
 - Add month-over-month comparison
 - Add merchant totals
 - Add unusual-spending indicators
+- Extend semantic styling to spending, bills, overdue states, warnings, expense categories, and negative cash flow
+- Keep status and category meaning understandable without color
+- Standardize chart legends, labels, and accessible text equivalents
 
 ## Milestone 10: Net Worth and Investment Views
 
@@ -119,6 +150,9 @@ Do not implement Plaid in this milestone.
 - Add allocation view where available
 - Add freshness indicators
 - Make synced, imported, and manual values distinct
+- Complete semantic styling across assets, debts, investments, and trend views
+- Standardize positive and negative value presentation without relying on color alone
+- Verify investment and net-worth charts use accessible legends and summaries
 
 ## Milestone 11: CSV Import
 
@@ -140,3 +174,6 @@ Do not implement Plaid in this milestone.
 - Production deployment
 - Plaid Production Trial setup
 - Connect real institutions only after Sandbox validation
+- Audit semantic colors for accessible contrast
+- Verify no financial value, status, confidence level, or warning relies on color alone
+- Verify semantic styling remains consistent across responsive layouts
