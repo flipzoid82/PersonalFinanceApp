@@ -75,6 +75,25 @@ describe("OverviewDashboard states", () => {
       "Partial totals",
     );
   });
+
+  it("links monthly metrics to their intended destinations", () => {
+    render(
+      <OverviewDashboard
+        dashboard={DashboardWithValues()}
+        now={new Date("2026-07-21T12:00:00.000Z")}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /Income This Month/ }),
+    ).toHaveAttribute("href", "/transactions");
+    expect(
+      screen.getByRole("link", { name: /Spending This Month/ }),
+    ).toHaveAttribute("href", "/spending?view=expenses");
+    expect(
+      screen.getByRole("link", { name: /Upcoming Bills/ }),
+    ).toHaveAttribute("href", "/calendar?view=upcoming&days=14");
+  });
 });
 
 function DashboardWithValues(): DashboardViewModel {

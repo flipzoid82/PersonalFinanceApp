@@ -82,6 +82,16 @@ export type DashboardCalendarEvent = {
   status: CalendarEventStatus;
   isUserConfirmed: boolean;
   account: { name: string } | null;
+  recurringStream?: {
+    isActive: boolean;
+    calendarOverrides: Array<{
+      confirmedDueDate: Date | null;
+      expectedAmountOverride: Prisma.Decimal | null;
+      statusOverride: CalendarEventStatus | null;
+      notABill: boolean;
+      updatedAt: Date;
+    }>;
+  } | null;
   overrides: Array<{
     confirmedDueDate: Date | null;
     expectedAmountOverride: Prisma.Decimal | null;

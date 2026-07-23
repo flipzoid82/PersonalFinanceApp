@@ -78,7 +78,7 @@ export function OverviewDashboard({
       label: "Income This Month",
       value: formatCurrency(dashboard.metrics.income),
       support: "Posted, explicitly classified income",
-      href: "/spending?view=income",
+      href: "/transactions",
       order: "order-5",
     },
     {

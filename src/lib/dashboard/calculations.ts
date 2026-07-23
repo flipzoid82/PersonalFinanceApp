@@ -207,11 +207,21 @@ function effectiveCalendarEvent(
   event: DashboardCalendarEvent,
 ): UpcomingActivity | null {
   const override = event.overrides[0];
-  if (override?.notABill) return null;
-  let status = override?.statusOverride ?? event.status;
-  const date = override?.confirmedDueDate ?? event.eventDate;
+  const streamOverride = event.recurringStream?.calendarOverrides[0];
+  if (
+    override?.notABill ||
+    streamOverride?.notABill ||
+    event.recurringStream?.isActive === false
+  )
+    return null;
+  let status =
+    override?.statusOverride ?? streamOverride?.statusOverride ?? event.status;
+  if (status === CalendarEventStatus.INACTIVE) return null;
+  const confirmedDueDate =
+    override?.confirmedDueDate ?? streamOverride?.confirmedDueDate;
+  const date = confirmedDueDate ?? event.eventDate;
   const dateLabel =
-    override?.confirmedDueDate ||
+    confirmedDueDate ||
     event.isUserConfirmed ||
     event.dateSource === CalendarDateSource.USER_CONFIRMED ||
     status === CalendarEventStatus.CONFIRMED
@@ -224,12 +234,16 @@ function effectiveCalendarEvent(
     title: event.title,
     date,
     predictedPostingDate: event.predictedPostingDate,
-    amount: override?.expectedAmountOverride ?? event.expectedAmount,
+    amount:
+      override?.expectedAmountOverride ??
+      streamOverride?.expectedAmountOverride ??
+      event.expectedAmount,
     currency: event.currency,
     dateLabel,
-    amountLabel: override?.expectedAmountOverride
-      ? "Manual"
-      : amountSourceLabel(event.amountSource),
+    amountLabel:
+      override?.expectedAmountOverride || streamOverride?.expectedAmountOverride
+        ? "Manual"
+        : amountSourceLabel(event.amountSource),
     status,
     confidence: event.confidenceLevel,
     accountName: event.account?.name ?? null,

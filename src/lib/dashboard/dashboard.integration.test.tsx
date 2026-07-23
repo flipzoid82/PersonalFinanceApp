@@ -109,7 +109,7 @@ describeDatabase("seeded Overview integration", () => {
     expect(dashboard.metrics.netWorth.toFixed(4)).toBe("280930.8576");
     expect(dashboard.metrics.income.toFixed(4)).toBe("4250.0000");
     expect(dashboard.metrics.spending.toFixed(4)).toBe("344.6021");
-    expect(dashboard.upcoming).toHaveLength(2);
+    expect(dashboard.upcoming).toHaveLength(9);
     expect(dashboard.netWorthTrend.length).toBeGreaterThanOrEqual(7);
     expect(html).toContain("Synthetic Individual Brokerage");
     expect(html).toContain("Example Electric (predicted)");

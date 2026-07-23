@@ -84,6 +84,23 @@ export async function getDashboardData(
       },
       include: {
         account: { select: { name: true } },
+        recurringStream: {
+          select: {
+            isActive: true,
+            calendarOverrides: {
+              where: { userId: ownerId },
+              orderBy: { updatedAt: "desc" },
+              take: 1,
+              select: {
+                confirmedDueDate: true,
+                expectedAmountOverride: true,
+                statusOverride: true,
+                notABill: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
         overrides: {
           where: { userId: ownerId },
           orderBy: { updatedAt: "desc" },
