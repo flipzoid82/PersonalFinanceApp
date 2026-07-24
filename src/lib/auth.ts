@@ -2,10 +2,10 @@ import "server-only";
 import { createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 
-const COOKIE_NAME = "finance_session";
 const SESSION_LENGTH_MS = 1000 * 60 * 60 * 24 * 30;
 
 function tokenHash(token: string) {
@@ -19,7 +19,7 @@ export async function createSession(userId: string) {
   await db.authSession.create({
     data: { tokenHash: tokenHash(token), expiresAt, userId },
   });
-  (await cookies()).set(COOKIE_NAME, token, {
+  (await cookies()).set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: env.NODE_ENV === "production",
@@ -29,7 +29,7 @@ export async function createSession(userId: string) {
 }
 
 export async function getCurrentUser() {
-  const token = (await cookies()).get(COOKIE_NAME)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
   const session = await db.authSession.findUnique({
@@ -53,9 +53,9 @@ export async function requireUser() {
 
 export async function deleteSession() {
   const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (token) {
     await db.authSession.deleteMany({ where: { tokenHash: tokenHash(token) } });
   }
-  cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(SESSION_COOKIE_NAME);
 }

@@ -1,6 +1,6 @@
 # Personal Finance Dashboard
 
-A private, single-owner personal finance dashboard. Milestone 4 provides a functional Calendar and recurring-event workflow alongside the Milestone 3 Overview, all backed by normalized synthetic PostgreSQL records. No financial institution is connected, and every bundled financial value is fake.
+A private, single-owner personal finance dashboard. Milestone 5 adds manual accounts, assets, debts, investment balances, Fidelity metadata templates, source-aware net worth, and light/dark semantic foundations alongside the Milestone 3 Overview and Milestone 4 Calendar. No financial institution is connected, and every bundled financial value is fake.
 
 ## Prerequisites
 
@@ -17,12 +17,14 @@ A private, single-owner personal finance dashboard. Milestone 4 provides a funct
 5. Generate Prisma Client: `pnpm db:generate`
 6. Apply migrations: `pnpm db:migrate`
 7. Create the sole owner account (PowerShell):
-   `$env:OWNER_PASSWORD="a-unique-password-with-12-or-more-characters"; $env:OWNER_NAME="Your Name"; pnpm owner:create -- you@example.com; Remove-Item Env:OWNER_PASSWORD`
+   `$env:OWNER_PASSWORD="a-unique-password-with-12-or-more-characters"; $env:OWNER_NAME="Your Name"; pnpm owner:create you@example.com; Remove-Item Env:OWNER_PASSWORD`
 8. Optionally load clearly fake development records: `pnpm db:seed`
 9. Start the app: `pnpm dev`
 10. Open `http://localhost:3000` and sign in.
 
 `owner:create` creates or updates the same owner email and refuses to add a different second user. The seed reuses an existing owner and never changes that owner's email, name, or password hash. If no owner exists, it creates a clearly synthetic `example.test` owner with login disabled; run `owner:create` afterward to configure usable credentials.
+
+The sign-in page links to an honest recovery-status page, but automated password reset is not configured. It does not use security questions or collect reset information. The planned secure flow uses a single-use, short-lived token delivered to the verified owner email, generic request responses, rate limiting, and invalidation of all existing owner sessions after a successful reset. Until that work is implemented, the installation operator must restore access through the local `owner:create` workflow.
 
 ## Commands
 
@@ -35,7 +37,7 @@ A private, single-owner personal finance dashboard. Milestone 4 provides a funct
 - `pnpm db:generate` — generate Prisma Client
 - `pnpm db:migrate` — create/apply development migrations
 - `pnpm db:deploy` — apply checked-in migrations without creating new ones
-- `pnpm db:seed` — idempotently load synthetic Milestone 4 calendar and dashboard records
+- `pnpm db:seed` — idempotently load synthetic Milestone 5 portfolio, calendar, and dashboard records
 - `pnpm db:studio` — inspect the development database
 
 To run the destructive model tests locally, create a separate database whose name contains `test`, migrate it, and provide it only through `TEST_DATABASE_URL`. The tests refuse to run against a URL whose database name does not contain `test`.
@@ -68,7 +70,7 @@ Investment totals use the latest balance snapshot for each investment account, f
 
 Money calculations remain in Prisma `Decimal` until final locale-aware formatting. Dashboard calendar boundaries currently use UTC because the owner profile has no time-zone field. Aggregate demo totals assume the seeded USD currency; individual account and transaction rows retain their own currency labels. Sources become stale after seven days without a relevant update.
 
-Accounts, Transactions, Bills, Spending, Investments, Net Worth, and Settings remain placeholders. There is no live sync, importing, recurring-pattern detection, automatic event generation, performance analysis, or production integration.
+Transactions, Bills, Spending, and Settings remain placeholders. There is no live sync, importing, recurring-pattern detection, automatic event generation, performance analysis, or production integration.
 
 ## Milestone 4 calendar and recurring events
 
@@ -91,6 +93,26 @@ The seed includes clearly fake examples for every event type and confidence leve
 
 Calendar freshness uses the existing seven-day threshold. Missing amounts or sources needing attention produce a partial-data notice while keeping available records visible. All calendar dates use UTC because the owner profile does not yet include a time zone. Currency is displayed per record, but conversion or aggregation across currencies is not implemented.
 
+## Milestone 5 manual assets and investments
+
+The authenticated Accounts, Investments, and Net Worth pages now support:
+
+- Manual checking, savings, brokerage, retirement, 401(k), mortgage, loan, credit-card, other-asset, and other-debt accounts
+- Manual homes, real estate, vehicles, private assets, mortgages, auto loans, student loans, personal loans, and other debts
+- Exact `DECIMAL(19,4)` balance and investment snapshots with chronological history and duplicate timestamp protection
+- Create, update, deactivate, and referentially safe delete flows scoped to the authenticated owner
+- Editable metadata templates for Fidelity Individual TOD, UnitedHealth Contribution, and UnitedHealth Group 401(k) Savings Plan
+- Source, active/inactive, current/stale, and partial labels that never rely on color alone
+- Holdings display where records exist; holdings are detail and are not added to account totals
+
+Current values use one authoritative value per account. Investment accounts use the latest investment snapshot, other accounts use the latest balance snapshot, and both fall back to the normalized account balance. Active manual assets and debts use their current manual value. Holdings are not added again. Inactive records remain visible but are excluded. Net worth is active assets and investments minus active debts, with all arithmetic kept in Prisma `Decimal`.
+
+Manual values become stale after seven days without a snapshot or update. A source in needs-attention or error state marks totals partial while retaining available values. The demo seed includes a home, mortgage, vehicle, auto loan, active/inactive records, all three Fidelity templates, a manual brokerage, holdings, and fresh/stale snapshots.
+
+Semantic financial styles are centralized as theme-aware CSS variables and reusable components: assets/income/paid are green, debts/spending/overdue red, predicted/stale/warnings amber, confirmed/synced informational blue, investments purple, and inactive/unavailable states gray. The foundations respect system light/dark preference and include future explicit `.light`/`.dark` overrides. Milestone 5 intentionally does not expose a theme selector; that remains Milestone 10 work.
+
+Fidelity templates contain editable labels and account metadata only. They never collect credentials, sign in, or automatically sync. Plaid, automatic Fidelity/NetBenefits sync, CSV import, investment performance, allocation, trading, and advice are not implemented.
+
 ## Data model
 
 The schema normalizes data from Plaid, CSV imports, manual entry, Fidelity files, and future providers into shared internal records:
@@ -111,6 +133,6 @@ All required variables are described in `.env.example`. Startup fails with field
 
 ## Current status
 
-Milestone 4 includes authenticated month and upcoming Calendar views, effective override handling, secure owner-scoped mutations, manual recurring events, deterministic posted-payment matching, responsive/accessibility states, expanded synthetic fixtures, and PostgreSQL integration coverage. Milestone 3 Overview calculations, Milestone 1 owner-only authentication, and Milestone 2's provider-neutral schema and migration history remain intact.
+Milestone 5 includes authenticated manual account, asset, debt, investment snapshot, Fidelity-template, and source-aware Net Worth workflows with semantic light/dark foundations and PostgreSQL integration coverage. Milestone 4 Calendar, Milestone 3 Overview calculations, Milestone 1 owner-only authentication, and the existing provider-neutral migration history remain intact.
 
-No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, recurring-pattern detection, automatic event generation, bill payment, investment performance analysis, multi-user feature, or production deployment exists yet. Manual asset and investment workflows remain Milestone 5 work. See `docs/Plan Docs/build-plan.md` for the future sequence.
+No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, recurring-pattern detection, automatic event generation, bill payment, investment performance analysis, theme selector, multi-user feature, or production deployment exists yet. See `docs/Plan Docs/build-plan.md` for the future sequence.

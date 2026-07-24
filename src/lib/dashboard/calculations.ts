@@ -362,9 +362,17 @@ export function calculateDashboard(
 ): DashboardViewModel {
   const accounts = data.accounts
     .filter((account) => account.userId === data.ownerId && account.isActive)
+    .map((account) => ({
+      ...account,
+      currentBalance:
+        account.balanceSnapshots?.[0]?.currentBalance ?? account.currentBalance,
+      availableBalance:
+        account.balanceSnapshots?.[0]?.availableBalance ??
+        account.availableBalance,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const manualAssets = data.manualAssets.filter(
-    ({ userId }) => userId === data.ownerId,
+    ({ userId, isActive }) => userId === data.ownerId && isActive !== false,
   );
   const investmentAccounts = currentInvestmentAccounts(data, accounts, now);
   const cashAccounts = accounts.filter((account) =>

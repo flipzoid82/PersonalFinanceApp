@@ -13,15 +13,15 @@ export default async function DashboardLayout({
     <div className="min-h-screen">
       <DesktopNavigation />
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-[var(--border-default)] bg-[color-mix(in_srgb,var(--surface-panel)_95%,transparent)] px-4 backdrop-blur sm:px-6 lg:px-8">
           <MobileNavigation />
-          <p className="hidden truncate text-sm text-slate-600 sm:block">
+          <p className="hidden truncate text-sm text-[var(--text-secondary)] sm:block">
             Signed in as {user.displayName ?? user.email}
           </p>
           <form action={logout}>
             <Button
               type="submit"
-              className="min-h-9 bg-white px-3 text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+              className="min-h-9 bg-[var(--surface-panel)] px-3 text-[var(--text-primary)] ring-1 ring-[var(--border-default)] hover:bg-[var(--surface-subtle)] dark:bg-[var(--surface-panel)] dark:text-[var(--text-primary)]"
             >
               Sign out
             </Button>

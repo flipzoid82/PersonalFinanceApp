@@ -10,7 +10,7 @@ async function main() {
 
   if (!email || !email.includes("@"))
     throw new Error(
-      "Usage: OWNER_PASSWORD=<password> pnpm owner:create -- owner@example.com",
+      "Usage: OWNER_PASSWORD=<password> pnpm owner:create owner@example.com",
     );
   if (!password || password.length < 12)
     throw new Error("OWNER_PASSWORD must contain at least 12 characters.");

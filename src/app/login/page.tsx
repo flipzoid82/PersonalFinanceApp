@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,14 @@ export default async function LoginPage() {
           Sign in with the owner account configured for this application.
         </p>
         <LoginForm />
+        <p className="mt-5 text-center text-sm">
+          <Link
+            href="/forgot-password"
+            className="font-semibold text-[var(--semantic-info-text)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+          >
+            Forgot password?
+          </Link>
+        </p>
       </Card>
     </main>
   );

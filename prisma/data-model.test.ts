@@ -220,7 +220,7 @@ describeDatabase("Milestone 2 data model", () => {
       where: { id: "seed_account_checking" },
     });
     expect(account.institutionConnectionId).toBeNull();
-    expect(await prisma.manualAsset.count()).toBe(2);
+    expect(await prisma.manualAsset.count()).toBe(5);
   });
 
   it("supports pending-to-posted linkage without changing the pending source", async () => {

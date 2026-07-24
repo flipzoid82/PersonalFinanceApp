@@ -1,28 +1,15 @@
 import type { CalendarEventStatus, ConfidenceLevel } from "@prisma/client";
+import { SemanticBadge, type SemanticTone } from "@/components/ui/semantic";
 import { titleCaseEnum } from "@/lib/dashboard/formatters";
-import { cn } from "@/lib/utils";
 
 export function TextBadge({
   children,
-  tone = "neutral",
+  tone = "muted",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "positive" | "warning" | "danger";
+  tone?: SemanticTone;
 }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold",
-        tone === "positive" &&
-          "border-emerald-200 bg-emerald-50 text-emerald-800",
-        tone === "warning" && "border-amber-200 bg-amber-50 text-amber-900",
-        tone === "danger" && "border-rose-200 bg-rose-50 text-rose-800",
-        tone === "neutral" && "border-slate-200 bg-slate-50 text-slate-700",
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <SemanticBadge tone={tone}>{children}</SemanticBadge>;
 }
 
 export function StatusBadge({ status }: { status: CalendarEventStatus }) {
@@ -30,10 +17,12 @@ export function StatusBadge({ status }: { status: CalendarEventStatus }) {
     status === "PAID"
       ? "positive"
       : status === "OVERDUE"
-        ? "danger"
-        : status === "NEEDS_CONFIRMATION"
+        ? "negative"
+        : status === "PREDICTED" || status === "NEEDS_CONFIRMATION"
           ? "warning"
-          : "neutral";
+          : status === "CONFIRMED"
+            ? "info"
+            : "muted";
   return <TextBadge tone={tone}>{titleCaseEnum(status)}</TextBadge>;
 }
 
@@ -44,7 +33,11 @@ export function ConfidenceBadge({
 }) {
   return (
     <TextBadge
-      tone={confidence === "NEEDS_CONFIRMATION" ? "warning" : "neutral"}
+      tone={
+        confidence === "NEEDS_CONFIRMATION" || confidence === "MEDIUM"
+          ? "warning"
+          : "muted"
+      }
     >
       Confidence: {titleCaseEnum(confidence)}
     </TextBadge>

@@ -30,4 +30,12 @@ describe("authenticated dashboard layout", () => {
     );
     expect(mocks.requireUser).toHaveBeenCalledOnce();
   });
+
+  it("does not render protected children when session validation redirects", async () => {
+    mocks.requireUser.mockRejectedValue(new Error("NEXT_REDIRECT"));
+
+    await expect(
+      DashboardLayout({ children: <p>Protected content</p> }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+  });
 });

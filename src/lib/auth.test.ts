@@ -29,7 +29,7 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-import { deleteSession, requireUser } from "./auth";
+import { deleteSession, getCurrentUser, requireUser } from "./auth";
 
 describe("session logout", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -78,5 +78,30 @@ describe("session logout", () => {
 
     await expect(requireUser()).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.redirect).toHaveBeenCalledWith("/login");
+  });
+
+  it("rejects a cookie that has no matching AuthSession", async () => {
+    mocks.cookies.mockResolvedValue({
+      get: vi.fn().mockReturnValue({ value: "unknown-session-token" }),
+    });
+    mocks.findUnique.mockResolvedValue(null);
+
+    await expect(getCurrentUser()).resolves.toBeNull();
+  });
+
+  it("rejects an expired AuthSession even when its cookie still exists", async () => {
+    mocks.cookies.mockResolvedValue({
+      get: vi.fn().mockReturnValue({ value: "expired-session-token" }),
+    });
+    mocks.findUnique.mockResolvedValue({
+      expiresAt: new Date(Date.now() - 1),
+      user: {
+        id: "owner-id",
+        email: "owner@example.test",
+        displayName: "Owner",
+      },
+    });
+
+    await expect(getCurrentUser()).resolves.toBeNull();
   });
 });

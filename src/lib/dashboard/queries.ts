@@ -43,6 +43,16 @@ export async function getDashboardData(
         institutionConnection: {
           select: { status: true, lastSuccessfulSyncAt: true },
         },
+        balanceSnapshots: {
+          where: { userId: ownerId, capturedAt: { lte: now } },
+          orderBy: { capturedAt: "desc" },
+          take: 1,
+          select: {
+            currentBalance: true,
+            availableBalance: true,
+            capturedAt: true,
+          },
+        },
       },
     }),
     db.transaction.findMany({
@@ -130,7 +140,7 @@ export async function getDashboardData(
       },
       orderBy: { capturedAt: "asc" },
     }),
-    db.manualAsset.findMany({ where: { userId: ownerId } }),
+    db.manualAsset.findMany({ where: { userId: ownerId, isActive: true } }),
     db.dataSource.findMany({
       where: { userId: ownerId },
       include: {
