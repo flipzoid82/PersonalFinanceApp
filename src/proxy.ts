@@ -1,7 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "./lib/auth-constants";
 
-const PUBLIC_PATHS = ["/login", "/forgot-password"] as const;
+const PUBLIC_PATHS = [
+  "/login",
+  "/forgot-password",
+  "/api/plaid/webhook",
+] as const;
 
 function isPublicPath(pathname: string) {
   return (
@@ -27,6 +31,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login(?:/|$)|forgot-password(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login(?:/|$)|forgot-password(?:/|$)|api/plaid/webhook(?:/|$)|_next/static|_next/image|favicon.ico).*)",
   ],
 };

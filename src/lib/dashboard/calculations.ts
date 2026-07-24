@@ -366,6 +366,9 @@ export function calculateDashboard(
       ...account,
       currentBalance:
         account.balanceSnapshots?.[0]?.currentBalance ?? account.currentBalance,
+      balanceAvailable:
+        Boolean(account.balanceSnapshots?.[0]) ||
+        account.balanceAvailable !== false,
       availableBalance:
         account.balanceSnapshots?.[0]?.availableBalance ??
         account.availableBalance,
@@ -374,11 +377,18 @@ export function calculateDashboard(
   const manualAssets = data.manualAssets.filter(
     ({ userId, isActive }) => userId === data.ownerId && isActive !== false,
   );
-  const investmentAccounts = currentInvestmentAccounts(data, accounts, now);
-  const cashAccounts = accounts.filter((account) =>
+  const metricAccounts = accounts.filter(
+    ({ balanceAvailable }) => balanceAvailable !== false,
+  );
+  const investmentAccounts = currentInvestmentAccounts(
+    data,
+    metricAccounts,
+    now,
+  );
+  const cashAccounts = metricAccounts.filter((account) =>
     CASH_TYPES.has(account.accountType),
   );
-  const cardAccounts = accounts.filter(
+  const cardAccounts = metricAccounts.filter(
     ({ accountType }) => accountType === AccountType.CREDIT_CARD,
   );
   const cash = sum(cashAccounts.map(({ currentBalance }) => currentBalance));
@@ -398,7 +408,7 @@ export function calculateDashboard(
     : null;
   const investments = sum(investmentAccounts.map(({ value }) => value.abs()));
   const otherAccountAssets = sum(
-    accounts
+    metricAccounts
       .filter(
         ({ accountType }) =>
           !CASH_TYPES.has(accountType) &&
@@ -408,7 +418,7 @@ export function calculateDashboard(
       .map(({ currentBalance }) => currentBalance),
   );
   const accountDebts = sum(
-    accounts
+    metricAccounts
       .filter(({ accountType }) => DEBT_TYPES.has(accountType))
       .map(({ currentBalance }) => currentBalance.abs()),
   );

@@ -18,6 +18,7 @@ export type PortfolioAccount = {
   source: AccountSource;
   currency: string;
   currentBalance: Prisma.Decimal;
+  balanceAvailable?: boolean;
   availableBalance: Prisma.Decimal | null;
   creditLimit: Prisma.Decimal | null;
   isManual: boolean;
@@ -87,6 +88,7 @@ export type PortfolioItem = {
   typeLabel: string;
   category: "asset" | "debt" | "investment";
   value: Prisma.Decimal;
+  valueAvailable: boolean;
   currency: string;
   sourceLabel: "Synced" | "Imported" | "Manual";
   valueSource:

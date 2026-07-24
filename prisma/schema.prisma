@@ -250,11 +250,18 @@ model InstitutionConnection {
   dataSource           DataSource       @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
   provider             String
   providerItemId       String?          @map("provider_item_id")
+  linkSessionId        String?          @unique @map("link_session_id")
   institutionId        String?          @map("institution_id")
   institutionName      String           @map("institution_name")
   encryptedAccessToken String?          @map("encrypted_access_token")
   status               ConnectionStatus @default(ACTIVE)
+  syncCursor           String?          @map("sync_cursor")
+  syncStartedAt        DateTime?        @map("sync_started_at")
+  lastAttemptedSyncAt  DateTime?        @map("last_attempted_sync_at")
   lastSuccessfulSyncAt DateTime?        @map("last_successful_sync_at")
+  lastErrorCode        String?          @map("last_error_code")
+  lastErrorMessage     String?          @map("last_error_message")
+  disconnectedAt       DateTime?        @map("disconnected_at")
   accounts             Account[]
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
@@ -263,6 +270,8 @@ model InstitutionConnection {
   @@index([userId])
   @@index([dataSourceId])
   @@index([institutionId])
+  @@index([userId, status])
+  @@index([syncStartedAt])
   @@map("institution_connections")
 }
 
@@ -275,6 +284,7 @@ model Account {
   institutionConnectionId String?                     @map("institution_connection_id")
   institutionConnection   InstitutionConnection?      @relation(fields: [institutionConnectionId], references: [id], onDelete: SetNull)
   providerAccountId       String?                     @map("provider_account_id")
+  mask                    String?
   name                    String
   officialName            String?                     @map("official_name")
   institutionName         String?                     @map("institution_name")
@@ -283,6 +293,7 @@ model Account {
   source                  AccountSource
   currency                String                      @default("USD") @db.Char(3)
   currentBalance          Decimal                     @map("current_balance") @db.Decimal(19, 4)
+  balanceAvailable        Boolean                     @default(true) @map("balance_available")
   availableBalance        Decimal?                    @map("available_balance") @db.Decimal(19, 4)
   creditLimit             Decimal?                    @map("credit_limit") @db.Decimal(19, 4)
   isManual                Boolean                     @default(false) @map("is_manual")
@@ -329,6 +340,7 @@ model Transaction {
   pendingTransaction           Transaction?          @relation("PendingToPosted", fields: [pendingTransactionId], references: [id], onDelete: SetNull)
   postedTransactions           Transaction[]         @relation("PendingToPosted")
   rawProviderPayload           Json?                 @map("raw_provider_payload")
+  removedAt                    DateTime?             @map("removed_at")
   override                     TransactionOverride?  @relation("SourceTransactionOverride")
   linkedByOverrides            TransactionOverride[] @relation("LinkedTransactionOverride")
   calendarEvents               CalendarEvent[]

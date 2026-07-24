@@ -69,4 +69,24 @@ describe("server-side dashboard route protection", () => {
       expect(response.headers.get("location")).toBeNull();
     },
   );
+
+  it("allows the verified Plaid webhook endpoint without an owner cookie", () => {
+    const response = proxy(
+      new NextRequest("http://localhost:3000/api/plaid/webhook"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("keeps owner-facing Plaid APIs protected", () => {
+    const response = proxy(
+      new NextRequest("http://localhost:3000/api/plaid/link-token"),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/login",
+    );
+  });
 });

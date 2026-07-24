@@ -69,7 +69,9 @@ export function AccountList({
         const latest = latestAccountValue(account, now);
         const isDebt = DEBT_ACCOUNT_TYPES.has(account.accountType);
         const sourceLabel = titleCaseEnum(account.source);
-        const freshness = freshnessState(latest.updatedAt, now);
+        const freshness = latest.isAvailable
+          ? freshnessState(latest.updatedAt, now)
+          : "unavailable";
         return (
           <li key={account.id}>
             <Card className="p-5 sm:p-6">
@@ -142,21 +144,27 @@ export function AccountList({
                 </div>
                 <div className="sm:text-right">
                   <p className="text-xl">
-                    <SemanticValue
-                      tone={
-                        account.isActive
-                          ? isDebt
-                            ? "negative"
-                            : investmentsOnly
-                              ? "investment"
-                              : "positive"
-                          : "muted"
-                      }
-                      label={isDebt ? "Amount owed" : "Current value"}
-                    >
-                      {isDebt ? "−" : "+"}
-                      {formatCurrency(latest.value.abs(), account.currency)}
-                    </SemanticValue>
+                    {latest.isAvailable ? (
+                      <SemanticValue
+                        tone={
+                          account.isActive
+                            ? isDebt
+                              ? "negative"
+                              : investmentsOnly
+                                ? "investment"
+                                : "positive"
+                            : "muted"
+                        }
+                        label={isDebt ? "Amount owed" : "Current value"}
+                      >
+                        {isDebt ? "−" : "+"}
+                        {formatCurrency(latest.value.abs(), account.currency)}
+                      </SemanticValue>
+                    ) : (
+                      <SemanticValue tone="muted" label="Balance unavailable">
+                        Unavailable
+                      </SemanticValue>
+                    )}
                   </p>
                   <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     {isDebt ? "Amount owed" : "Asset value"}

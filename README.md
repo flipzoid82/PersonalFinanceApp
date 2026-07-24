@@ -1,6 +1,6 @@
 # Personal Finance Dashboard
 
-A private, single-owner personal finance dashboard. Milestone 5 adds manual accounts, assets, debts, investment balances, Fidelity metadata templates, source-aware net worth, and light/dark semantic foundations alongside the Milestone 3 Overview and Milestone 4 Calendar. No financial institution is connected, and every bundled financial value is fake.
+A private, single-owner personal finance dashboard. Milestone 6 adds an explicitly Sandbox-only Plaid connection, encrypted access-token storage, normalized account and transaction sync, verified webhooks, repair, and disconnect flows. Every bundled or seeded financial value is fake; Plaid Production and real institutions are not supported.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ A private, single-owner personal finance dashboard. Milestone 5 adds manual acco
 
 1. Install dependencies: `pnpm install`
 2. Copy `.env.example` to `.env`.
-3. Replace `AUTH_SECRET` with at least 32 random characters and `TOKEN_ENCRYPTION_KEY` with 64 random hexadecimal characters. Do not commit `.env`.
+3. Replace `AUTH_SECRET` with at least 32 random characters and `TOKEN_ENCRYPTION_KEY` with 64 random hexadecimal characters. For Plaid Sandbox, also set the five `PLAID_*` variables described below. Do not commit `.env`.
 4. Start PostgreSQL: `docker compose up -d postgres`
 5. Generate Prisma Client: `pnpm db:generate`
 6. Apply migrations: `pnpm db:migrate`
@@ -111,7 +111,61 @@ Manual values become stale after seven days without a snapshot or update. A sour
 
 Semantic financial styles are centralized as theme-aware CSS variables and reusable components: assets/income/paid are green, debts/spending/overdue red, predicted/stale/warnings amber, confirmed/synced informational blue, investments purple, and inactive/unavailable states gray. The foundations respect system light/dark preference and include future explicit `.light`/`.dark` overrides. Milestone 5 intentionally does not expose a theme selector; that remains Milestone 10 work.
 
-Fidelity templates contain editable labels and account metadata only. They never collect credentials, sign in, or automatically sync. Plaid, automatic Fidelity/NetBenefits sync, CSV import, investment performance, allocation, trading, and advice are not implemented.
+Fidelity templates contain editable labels and account metadata only. They never collect credentials, sign in, or automatically sync. Automatic Fidelity/NetBenefits sync, CSV import, investment performance, allocation, trading, and advice are not implemented.
+
+## Milestone 6 Plaid Sandbox
+
+Plaid support is intentionally restricted to the official Sandbox. Create
+Sandbox API keys in the Plaid dashboard and configure:
+
+```dotenv
+PLAID_CLIENT_ID="your-sandbox-client-id"
+PLAID_SECRET="your-sandbox-secret"
+PLAID_ENV="sandbox"
+PLAID_WEBHOOK_URL="https://your-public-development-url.example/api/plaid/webhook"
+PLAID_TOKEN_ENCRYPTION_KEY="a-dedicated-64-character-hex-key"
+```
+
+`PLAID_ENV` accepts only `sandbox`. The Plaid encryption key must differ from
+`TOKEN_ENCRYPTION_KEY`. Secrets and access tokens are server-only and must
+never be committed, logged, returned to the browser, or placed in fixtures.
+If Plaid configuration is absent or invalid, the rest of the dashboard remains
+available and Accounts shows a safe configuration-required state.
+
+From Accounts, “Connect Sandbox institution” requests a short-lived Link token
+for the Transactions product. Plaid Link handles only official fake Sandbox
+credentials. The browser returns a one-time public token; the server exchanges
+it, encrypts the resulting access token with AES-256-GCM and a unique nonce,
+stores only ciphertext, maps accounts into the provider-neutral schema, and
+runs the initial cursor-based `/transactions/sync`.
+
+Manual sync and verified `SYNC_UPDATES_AVAILABLE` webhooks reuse the same sync
+engine. Cursor advancement, account updates, and added/modified/removed
+transaction reconciliation commit atomically. A mutation during pagination
+restarts from the original cursor. Provider removal is preserved as canceled
+history, pending-to-posted replacements are linked, and local overrides remain
+separate and authoritative. Pending transactions cannot satisfy Calendar paid
+matching.
+
+Update mode uses the encrypted server-side access token to repair an Item and
+does not exchange another public token. Disconnect requires confirmation,
+calls Plaid Item removal, destroys the local ciphertext, deactivates the source
+and accounts, and retains normalized historical transactions. Reconnecting a
+single unambiguous account reuses its local identity to avoid double counting.
+Balances missing from Plaid are displayed as unavailable and excluded from
+totals.
+
+Plaid signs webhooks with an ES256 JWT in `Plaid-Verification`. The endpoint
+validates the official JWK, algorithm, key lifetime, five-minute issue window,
+and SHA-256 raw-body digest before finding the Item by its stored provider ID.
+Local webhook testing needs an HTTPS URL reachable by Plaid; use only a
+developer-controlled tunnel and never include credentials in its URL.
+
+Most tests use deterministic mocked Plaid responses. Optional physical testing
+must use official Sandbox credentials and Sandbox institutions only. This
+milestone does not support Plaid Production, real bank credentials, payments,
+transfers, identity, liabilities, income, Auth/routing data, automatic
+recurring detection, or Milestone 7 imports.
 
 ## Data model
 
@@ -129,10 +183,22 @@ Money uses PostgreSQL `DECIMAL(19,4)` through Prisma `Decimal`, never floating p
 
 ## Environment
 
-All required variables are described in `.env.example`. Startup fails with field-specific validation errors when the PostgreSQL URL, application URL, auth secret, or future token-encryption key is missing or invalid. Only server modules can read these values.
+All variables are described in `.env.example`. Core startup fails with
+field-specific validation errors when the PostgreSQL URL, application URL,
+auth secret, or general token-encryption key is invalid. Plaid validates its
+complete Sandbox-only configuration at the server integration boundary so an
+unconfigured dashboard can still render safely. Only server modules can read
+these values.
 
 ## Current status
 
-Milestone 5 includes authenticated manual account, asset, debt, investment snapshot, Fidelity-template, and source-aware Net Worth workflows with semantic light/dark foundations and PostgreSQL integration coverage. Milestone 4 Calendar, Milestone 3 Overview calculations, Milestone 1 owner-only authentication, and the existing provider-neutral migration history remain intact.
+Milestone 6 includes authenticated, owner-scoped Plaid Sandbox Link, exchange,
+encrypted credential storage, account and cursor-based transaction sync,
+verified webhooks, manual sync, repair, disconnect, and read-only normalized
+transaction display. Milestones 1–5 remain intact.
 
-No live Plaid or Fidelity integration, syncing, CSV parsing, import UI, recurring-pattern detection, automatic event generation, bill payment, investment performance analysis, theme selector, multi-user feature, or production deployment exists yet. See `docs/Plan Docs/build-plan.md` for the future sequence.
+No real-institution or Plaid Production integration, automatic Fidelity sync,
+CSV/PDF parsing, import UI, recurring-pattern detection, automatic event
+generation, bill payment, investment performance analysis, theme selector,
+multi-user feature, or production deployment exists. See
+`docs/Plan Docs/build-plan.md` for the future sequence.

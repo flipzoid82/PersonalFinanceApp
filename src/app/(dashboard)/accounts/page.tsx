@@ -6,6 +6,7 @@ import {
   ManualAssetList,
 } from "@/components/portfolio/manual-asset-list";
 import { PortfolioSummary } from "@/components/portfolio/portfolio-summary";
+import { PlaidConnectionManager } from "@/components/plaid/connection-manager";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { getPortfolioViewModel } from "@/lib/portfolio/server";
@@ -33,6 +34,7 @@ export default async function AccountsPage({
       </p>
       <PortfolioFeedback {...feedback} />
       <PortfolioSummary portfolio={portfolio} />
+      <PlaidConnectionManager ownerId={user.id} now={now} />
 
       <section aria-labelledby="accounts-title" className="mt-8">
         <h2 id="accounts-title" className="text-xl font-bold">
