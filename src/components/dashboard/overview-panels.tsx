@@ -96,11 +96,12 @@ function AccountBalances({
               </div>
               <div className="sm:text-right">
                 <p className="font-semibold">
-                  {formatCurrency(
-                    account.currentBalance.abs(),
-                    account.currency,
-                  )}
-                  {isDebt ? " owed" : ""}
+                  {account.balanceAvailable === false
+                    ? "Unavailable"
+                    : `${formatCurrency(
+                        account.currentBalance.abs(),
+                        account.currency,
+                      )}${isDebt ? " owed" : ""}`}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {account.availableBalance

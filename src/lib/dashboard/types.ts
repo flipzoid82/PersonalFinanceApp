@@ -24,6 +24,7 @@ export type DashboardAccount = {
   source: AccountSource;
   currency: string;
   currentBalance: Prisma.Decimal;
+  balanceAvailable?: boolean;
   availableBalance: Prisma.Decimal | null;
   creditLimit: Prisma.Decimal | null;
   isActive: boolean;

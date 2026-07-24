@@ -40,6 +40,15 @@ export function deriveDashboardState(data: RawDashboardData, now: Date) {
     now.getTime() - STALE_AFTER_DAYS * 24 * 60 * 60 * 1000,
   );
   const partialReasons = new Set<string>();
+  if (
+    ownedAccounts.some(
+      ({ isActive, balanceAvailable }) =>
+        isActive && balanceAvailable === false,
+    )
+  )
+    partialReasons.add(
+      "One or more active accounts have an unavailable balance.",
+    );
 
   const sourceHealth = ownedSources.map<SourceHealth>((source) => {
     const accounts = ownedAccounts.filter(

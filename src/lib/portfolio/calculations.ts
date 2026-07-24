@@ -46,6 +46,7 @@ export function latestAccountValue(
     if (snapshot)
       return {
         value: snapshot.totalValue,
+        isAvailable: true,
         source: "Investment snapshot" as const,
         updatedAt: snapshot.asOfDate,
       };
@@ -56,12 +57,14 @@ export function latestAccountValue(
     if (snapshot)
       return {
         value: snapshot.currentBalance,
+        isAvailable: true,
         source: "Balance snapshot" as const,
         updatedAt: snapshot.capturedAt,
       };
   }
   return {
     value: account.currentBalance,
+    isAvailable: account.balanceAvailable !== false,
     source: "Account balance" as const,
     updatedAt: accountUpdateDate(account),
   };
@@ -92,6 +95,7 @@ export function calculatePortfolio(
       typeLabel: titleCaseEnum(account.accountType),
       category,
       value: latest.value.abs(),
+      valueAvailable: latest.isAvailable,
       currency: account.currency,
       sourceLabel: sourceLabel(account.source),
       valueSource: latest.source,
@@ -108,6 +112,7 @@ export function calculatePortfolio(
       typeLabel: titleCaseEnum(asset.assetType),
       category: asset.isDebt ? "debt" : "asset",
       value: asset.currentValue.abs(),
+      valueAvailable: true,
       currency: asset.currency,
       sourceLabel: "Manual",
       valueSource: "Manual value",
@@ -117,7 +122,9 @@ export function calculatePortfolio(
     });
   }
 
-  const activeItems = items.filter(({ isActive }) => isActive);
+  const activeItems = items.filter(
+    ({ isActive, valueAvailable }) => isActive && valueAvailable,
+  );
   const totalAssets = activeItems
     .filter(({ category }) => category !== "debt")
     .reduce((total, { value }) => total.plus(value), ZERO);
@@ -136,9 +143,18 @@ export function calculatePortfolio(
   const partialReasons = [...new Set(affectedSources)].map(
     (name) => `${name} needs attention.`,
   );
+  if (
+    ownedAccounts.some(
+      (account) =>
+        account.isActive && !latestAccountValue(account, now).isAvailable,
+    )
+  )
+    partialReasons.push(
+      "One or more active accounts have an unavailable balance.",
+    );
 
   return {
-    isEmpty: activeItems.length === 0,
+    isEmpty: items.filter(({ isActive }) => isActive).length === 0,
     isPartial: partialReasons.length > 0,
     partialReasons,
     totalAssets,
