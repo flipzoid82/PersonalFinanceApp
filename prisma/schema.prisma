@@ -289,6 +289,7 @@ model Account {
   isActive                Boolean                     @default(true) @map("is_active")
   lastSyncedAt            DateTime?                   @map("last_synced_at")
   lastImportedAt          DateTime?                   @map("last_imported_at")
+  notes                   String?
   transactions            Transaction[]
   recurringStreams        RecurringStream[]
   calendarEvents          CalendarEvent[]
@@ -542,12 +543,13 @@ model ManualAsset {
   currency     String          @default("USD") @db.Char(3)
   acquiredAt   DateTime?       @map("acquired_at") @db.Date
   isDebt       Boolean         @default(false) @map("is_debt")
+  isActive     Boolean         @default(true) @map("is_active")
   notes        String?
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 
   @@index([userId])
-  @@index([userId, assetType, isDebt])
+  @@index([userId, assetType, isDebt, isActive])
   @@map("manual_assets")
 }
 

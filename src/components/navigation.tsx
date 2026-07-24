@@ -43,10 +43,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900",
+              "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]",
               active
-                ? "bg-slate-900 text-white"
-                : "text-slate-700 hover:bg-slate-100",
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)]",
             )}
           >
             <Icon aria-hidden="true" size={19} />
@@ -60,7 +60,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export function DesktopNavigation() {
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-200 bg-white p-5 lg:block">
+    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[var(--border-default)] bg-[var(--surface-panel)] p-5 lg:block">
       <p className="mb-8 text-lg font-bold tracking-tight">Personal Finance</p>
       <NavLinks />
     </aside>
@@ -76,7 +76,7 @@ export function MobileNavigation() {
         onClick={() => setOpen(true)}
         aria-label="Open navigation"
         aria-expanded={open}
-        className="rounded-lg p-2 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 lg:hidden"
+        className="rounded-lg p-2 hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)] lg:hidden"
       >
         <Menu aria-hidden="true" />
       </button>
@@ -87,13 +87,13 @@ export function MobileNavigation() {
             className="absolute inset-0 bg-slate-900/40"
             onClick={() => setOpen(false)}
           />
-          <aside className="relative h-full w-72 bg-white p-5 shadow-xl">
+          <aside className="relative h-full w-72 bg-[var(--surface-panel)] p-5 shadow-xl">
             <div className="mb-7 flex items-center justify-between">
               <p className="font-bold">Personal Finance</p>
               <button
                 onClick={() => setOpen(false)}
                 aria-label="Close navigation"
-                className="rounded-lg p-2 hover:bg-slate-100 focus-visible:outline-2"
+                className="rounded-lg p-2 hover:bg-[var(--surface-subtle)] focus-visible:outline-2"
               >
                 <X aria-hidden="true" />
               </button>

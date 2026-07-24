@@ -329,6 +329,6 @@ describeDatabase("Milestone 4 calendar integration", () => {
     );
     expect(dashboard.metrics.income.toString()).toBe("4250");
     expect(dashboard.metrics.spending.toString()).toBe("344.6021");
-    expect(dashboard.metrics.netWorth.toString()).toBe("280930.8576");
+    expect(dashboard.metrics.netWorth.toString()).toBe("396632.7341");
   });
 });

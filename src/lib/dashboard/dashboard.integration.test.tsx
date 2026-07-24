@@ -105,8 +105,8 @@ describeDatabase("seeded Overview integration", () => {
       raw.accounts.some(({ name }) => name === "Other Owner Account"),
     ).toBe(false);
     expect(dashboard.metrics.cash.toFixed(4)).toBe("16821.9876");
-    expect(dashboard.metrics.investments.toFixed(4)).toBe("89951.0200");
-    expect(dashboard.metrics.netWorth.toFixed(4)).toBe("280930.8576");
+    expect(dashboard.metrics.investments.toFixed(4)).toBe("191352.4521");
+    expect(dashboard.metrics.netWorth.toFixed(4)).toBe("396632.7341");
     expect(dashboard.metrics.income.toFixed(4)).toBe("4250.0000");
     expect(dashboard.metrics.spending.toFixed(4)).toBe("344.6021");
     expect(dashboard.upcoming).toHaveLength(9);

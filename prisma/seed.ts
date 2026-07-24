@@ -220,6 +220,65 @@ export async function seedDevelopmentData(
       source: AccountSource.MANUAL,
       currentBalance: money("61500.2500"),
       isManual: true,
+      notes: "Synthetic manual retirement account.",
+    });
+    const fidelityTod = await account({
+      id: "seed_account_fidelity_tod",
+      userId: owner.id,
+      dataSourceId: manualSource.id,
+      name: "Fidelity Individual TOD",
+      institutionName: "Fidelity Investments",
+      accountType: AccountType.BROKERAGE,
+      accountSubtype: "Taxable brokerage — individual TOD",
+      source: AccountSource.MANUAL,
+      currentBalance: money("18750.4321"),
+      isManual: true,
+      isActive: true,
+      notes:
+        "Synthetic metadata-only Fidelity template; no credentials or sync.",
+    });
+    const unitedHealthContribution = await account({
+      id: "seed_account_unitedhealth_contribution",
+      userId: owner.id,
+      dataSourceId: manualSource.id,
+      name: "UnitedHealth Contribution",
+      institutionName: "Fidelity NetBenefits",
+      accountType: AccountType.RETIREMENT,
+      accountSubtype: "Employer contribution retirement account",
+      source: AccountSource.MANUAL,
+      currentBalance: money("9400.1250"),
+      isManual: true,
+      isActive: true,
+      notes: "Synthetic stale manual template account.",
+    });
+    const unitedHealth401k = await account({
+      id: "seed_account_unitedhealth_401k",
+      userId: owner.id,
+      dataSourceId: manualSource.id,
+      name: "UnitedHealth Group 401(k) Savings Plan",
+      institutionName: "Fidelity NetBenefits",
+      accountType: AccountType.FOUR_O_ONE_K,
+      accountSubtype: "401(k) savings plan",
+      source: AccountSource.MANUAL,
+      currentBalance: money("73250.8750"),
+      isManual: true,
+      isActive: true,
+      notes:
+        "Synthetic metadata-only Fidelity template; automatic sync is unavailable.",
+    });
+    await account({
+      id: "seed_account_inactive_manual_brokerage",
+      userId: owner.id,
+      dataSourceId: manualSource.id,
+      name: "Archived Synthetic Brokerage",
+      institutionName: "Example Manual Brokerage",
+      accountType: AccountType.BROKERAGE,
+      accountSubtype: "Taxable brokerage",
+      source: AccountSource.MANUAL,
+      currentBalance: money("2222.2222"),
+      isManual: true,
+      isActive: false,
+      notes: "Synthetic inactive account excluded from totals.",
     });
 
     const posted = await tx.transaction.upsert({
@@ -934,6 +993,27 @@ export async function seedDevelopmentData(
       },
     });
     await tx.investmentHolding.upsert({
+      where: { id: "seed_holding_fidelity_tod" },
+      update: {
+        userId: owner.id,
+        accountId: fidelityTod.id,
+        asOfDate: day(0),
+      },
+      create: {
+        id: "seed_holding_fidelity_tod",
+        userId: owner.id,
+        accountId: fidelityTod.id,
+        source: InvestmentSource.MANUAL,
+        securityName: "Synthetic Broad Market ETF",
+        tickerSymbol: "FAKEX",
+        securityType: "exchange-traded fund",
+        quantity: money("75.1250000000"),
+        price: money("249.5900"),
+        currentValue: money("18750.4321"),
+        asOfDate: day(0),
+      },
+    });
+    await tx.investmentHolding.upsert({
       where: { id: "seed_holding_manual" },
       update: { userId: owner.id, accountId: retirement.id, asOfDate: day(0) },
       create: {
@@ -965,6 +1045,50 @@ export async function seedDevelopmentData(
         notes: "Synthetic Fidelity-style positions import.",
       },
     });
+    const fidelitySnapshots = [
+      {
+        id: "seed_investment_snapshot_fidelity_tod",
+        accountId: fidelityTod.id,
+        totalValue: money("18750.4321"),
+        vestedValue: null,
+        asOfDate: day(0),
+        notes: "Synthetic fresh manual Fidelity TOD balance.",
+      },
+      {
+        id: "seed_investment_snapshot_unitedhealth_contribution",
+        accountId: unitedHealthContribution.id,
+        totalValue: money("9400.1250"),
+        vestedValue: money("9400.1250"),
+        asOfDate: day(-10),
+        notes: "Synthetic stale employer contribution balance.",
+      },
+      {
+        id: "seed_investment_snapshot_unitedhealth_401k",
+        accountId: unitedHealth401k.id,
+        totalValue: money("73250.8750"),
+        vestedValue: money("70100.5000"),
+        asOfDate: day(-1),
+        notes: "Synthetic manual NetBenefits 401(k) balance.",
+      },
+    ];
+    for (const snapshot of fidelitySnapshots) {
+      await tx.investmentBalanceSnapshot.upsert({
+        where: { id: snapshot.id },
+        update: {
+          userId: owner.id,
+          accountId: snapshot.accountId,
+          totalValue: snapshot.totalValue,
+          vestedValue: snapshot.vestedValue,
+          asOfDate: snapshot.asOfDate,
+          notes: snapshot.notes,
+        },
+        create: {
+          ...snapshot,
+          userId: owner.id,
+          source: InvestmentSource.MANUAL,
+        },
+      });
+    }
     await tx.investmentBalanceSnapshot.upsert({
       where: { id: "seed_investment_snapshot_401k" },
       update: {
@@ -1029,7 +1153,11 @@ export async function seedDevelopmentData(
 
     await tx.manualAsset.upsert({
       where: { id: "seed_manual_home" },
-      update: { userId: owner.id, currentValue: money("450000.0000") },
+      update: {
+        userId: owner.id,
+        currentValue: money("450000.0000"),
+        isActive: true,
+      },
       create: {
         id: "seed_manual_home",
         userId: owner.id,
@@ -1038,11 +1166,17 @@ export async function seedDevelopmentData(
         currentValue: money("450000.0000"),
         costBasis: money("390000.0000"),
         isDebt: false,
+        isActive: true,
+        notes: "Synthetic manually tracked residence.",
       },
     });
     await tx.manualAsset.upsert({
       where: { id: "seed_manual_mortgage" },
-      update: { userId: owner.id, currentValue: money("275000.0000") },
+      update: {
+        userId: owner.id,
+        currentValue: money("275000.0000"),
+        isActive: true,
+      },
       create: {
         id: "seed_manual_mortgage",
         userId: owner.id,
@@ -1050,6 +1184,64 @@ export async function seedDevelopmentData(
         assetType: ManualAssetType.MORTGAGE,
         currentValue: money("275000.0000"),
         isDebt: true,
+        isActive: true,
+        notes: "Synthetic mortgage amount owed.",
+      },
+    });
+    await tx.manualAsset.upsert({
+      where: { id: "seed_manual_vehicle" },
+      update: {
+        userId: owner.id,
+        currentValue: money("28500.5555"),
+        isActive: true,
+      },
+      create: {
+        id: "seed_manual_vehicle",
+        userId: owner.id,
+        name: "Synthetic Family Vehicle",
+        assetType: ManualAssetType.VEHICLE,
+        currentValue: money("28500.5555"),
+        costBasis: money("36000.0000"),
+        isDebt: false,
+        isActive: true,
+        acquiredAt: day(-365),
+        notes: "Clearly fake manually tracked vehicle.",
+      },
+    });
+    await tx.manualAsset.upsert({
+      where: { id: "seed_manual_auto_loan" },
+      update: {
+        userId: owner.id,
+        currentValue: money("14200.1111"),
+        isActive: true,
+      },
+      create: {
+        id: "seed_manual_auto_loan",
+        userId: owner.id,
+        name: "Synthetic Auto Loan",
+        assetType: ManualAssetType.AUTO_LOAN,
+        currentValue: money("14200.1111"),
+        isDebt: true,
+        isActive: true,
+        notes: "Clearly fake auto-loan amount owed.",
+      },
+    });
+    await tx.manualAsset.upsert({
+      where: { id: "seed_manual_inactive_private_asset" },
+      update: {
+        userId: owner.id,
+        currentValue: money("5000.0000"),
+        isActive: false,
+      },
+      create: {
+        id: "seed_manual_inactive_private_asset",
+        userId: owner.id,
+        name: "Archived Synthetic Collectible",
+        assetType: ManualAssetType.PRIVATE_ASSET,
+        currentValue: money("5000.0000"),
+        isDebt: false,
+        isActive: false,
+        notes: "Synthetic inactive asset excluded from net worth.",
       },
     });
     await tx.balanceSnapshot.upsert({
@@ -1174,7 +1366,7 @@ if (process.env.NODE_ENV !== "test") {
   seedDevelopmentData()
     .then(({ ownerId }) => {
       console.log(
-        `Synthetic Milestone 4 calendar and dashboard data seeded for owner ${ownerId}.`,
+        `Synthetic Milestone 5 portfolio, calendar, and dashboard data seeded for owner ${ownerId}.`,
       );
     })
     .finally(() => prisma.$disconnect());

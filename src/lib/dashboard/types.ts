@@ -30,6 +30,11 @@ export type DashboardAccount = {
   lastSyncedAt: Date | null;
   lastImportedAt: Date | null;
   updatedAt: Date;
+  balanceSnapshots?: Array<{
+    currentBalance: Prisma.Decimal;
+    availableBalance: Prisma.Decimal | null;
+    capturedAt: Date;
+  }>;
   dataSource: {
     id: string;
     displayName: string;
@@ -136,6 +141,7 @@ export type DashboardManualAsset = {
   currentValue: Prisma.Decimal;
   currency: string;
   isDebt: boolean;
+  isActive?: boolean;
   updatedAt: Date;
 };
 
