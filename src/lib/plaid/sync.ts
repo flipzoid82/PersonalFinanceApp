@@ -6,6 +6,8 @@ import {
   type PrismaClient,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { runRecurringDetection } from "@/lib/recurring";
+import { plaidProviderIdentityKey } from "./account-identity";
 import { decryptAccessToken } from "./crypto";
 import {
   getPlaidClient,
@@ -162,6 +164,7 @@ export type PlaidSyncResult = {
   added: number;
   modified: number;
   removed: number;
+  recurringDetection?: "completed" | "failed";
 };
 
 export async function syncPlaidConnection(
@@ -171,6 +174,7 @@ export async function syncPlaidConnection(
     plaid?: PlaidClient;
     database?: DatabaseClient;
     now?: Date;
+    detectRecurring?: typeof runRecurringDetection;
   } = {},
 ): Promise<PlaidSyncResult> {
   const database = options.database ?? db;
@@ -194,6 +198,7 @@ export async function syncPlaidConnection(
       select: {
         id: true,
         dataSourceId: true,
+        institutionId: true,
         institutionName: true,
         encryptedAccessToken: true,
         syncCursor: true,
@@ -209,7 +214,9 @@ export async function syncPlaidConnection(
     ]);
 
     await database.$transaction(async (tx) => {
-      const reconnectedProviderAccountIds = new Set<string>();
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`plaid-account-owner:${ownerId}`}, 0))`;
+      const reconciledProviderAccountIds = new Set<string>();
+      const predecessorConnectionIds = new Set<string>();
       await tx.account.updateMany({
         where: { userId: ownerId, institutionConnectionId: connection.id },
         data: { isActive: false },
@@ -220,23 +227,146 @@ export async function syncPlaidConnection(
           connection.institutionName,
           now,
         );
-        const existing = await tx.account.findUnique({
+        const identityKey = plaidProviderIdentityKey({
+          institutionId: connection.institutionId,
+          mask: account.mask ?? null,
+          name: account.name,
+          officialName: account.official_name ?? null,
+          type: mapped.accountType,
+          subtype: mapped.accountSubtype,
+          currency: mapped.currency,
+        });
+        const providerLink = await tx.providerAccountLink.findUnique({
+          where: {
+            userId_provider_providerAccountId: {
+              userId: ownerId,
+              provider: "PLAID",
+              providerAccountId: account.account_id,
+            },
+          },
+          select: { accountId: true },
+        });
+        const byLogicalIdentity = identityKey
+          ? await tx.account.findUnique({
+              where: {
+                userId_providerIdentityKey: {
+                  userId: ownerId,
+                  providerIdentityKey: identityKey,
+                },
+              },
+              select: {
+                id: true,
+                institutionConnectionId: true,
+                providerAccountId: true,
+              },
+            })
+          : null;
+        const exact = await tx.account.findUnique({
           where: {
             dataSourceId_providerAccountId: {
               dataSourceId: connection.dataSourceId,
               providerAccountId: account.account_id,
             },
           },
-          select: { id: true },
+          select: {
+            id: true,
+            institutionConnectionId: true,
+            providerAccountId: true,
+          },
         });
+        let existing =
+          byLogicalIdentity ??
+          exact ??
+          (providerLink
+            ? await tx.account.findFirst({
+                where: { id: providerLink.accountId, userId: ownerId },
+                select: {
+                  id: true,
+                  institutionConnectionId: true,
+                  providerAccountId: true,
+                },
+              })
+            : null);
+        if (!existing && identityKey) {
+          const legacyCandidates = await tx.account.findMany({
+            where: {
+              userId: ownerId,
+              source: "SYNCED",
+              providerIdentityKey: null,
+              institutionConnection: {
+                provider: "PLAID",
+                institutionId: connection.institutionId,
+              },
+              institutionName: connection.institutionName,
+              mask: account.mask,
+              name: account.name,
+              accountType: mapped.accountType,
+              accountSubtype: mapped.accountSubtype,
+              currency: mapped.currency,
+            },
+            select: {
+              id: true,
+              institutionConnectionId: true,
+              providerAccountId: true,
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            take: 2,
+          });
+          if (legacyCandidates.length > 1)
+            throw new SafePlaidError("PLAID_ACCOUNT_REPAIR_REQUIRED");
+          existing = legacyCandidates[0] ?? null;
+        }
         if (existing) {
+          const replacement =
+            existing.institutionConnectionId !== connection.id ||
+            existing.providerAccountId !== account.account_id;
+          if (
+            existing.institutionConnectionId &&
+            existing.institutionConnectionId !== connection.id
+          )
+            predecessorConnectionIds.add(existing.institutionConnectionId);
+          await tx.providerAccountLink.updateMany({
+            where: { accountId: existing.id },
+            data: { isCurrent: false },
+          });
           await tx.account.update({
             where: { id: existing.id },
             data: {
+              dataSourceId: connection.dataSourceId,
               institutionConnectionId: connection.id,
+              providerAccountId: account.account_id,
+              providerIdentityKey: identityKey,
               ...mapped,
             },
           });
+          await tx.providerAccountLink.upsert({
+            where: {
+              userId_provider_providerAccountId: {
+                userId: ownerId,
+                provider: "PLAID",
+                providerAccountId: account.account_id,
+              },
+            },
+            update: {
+              accountId: existing.id,
+              institutionConnectionId: connection.id,
+              logicalIdentityKey: identityKey,
+              isCurrent: true,
+              lastSeenAt: now,
+            },
+            create: {
+              userId: ownerId,
+              provider: "PLAID",
+              providerAccountId: account.account_id,
+              logicalIdentityKey: identityKey,
+              accountId: existing.id,
+              institutionConnectionId: connection.id,
+              isCurrent: true,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+          });
+          if (replacement) reconciledProviderAccountIds.add(account.account_id);
           continue;
         }
 
@@ -245,34 +375,89 @@ export async function syncPlaidConnection(
             userId: ownerId,
             source: "SYNCED",
             isActive: false,
+            institutionConnection: { provider: "PLAID" },
             institutionName: connection.institutionName,
             mask: account.mask,
             name: account.name,
             accountType: mapped.accountType,
+            accountSubtype: mapped.accountSubtype,
           },
-          select: { id: true },
+          select: {
+            id: true,
+            institutionConnectionId: true,
+          },
           orderBy: { updatedAt: "desc" },
           take: 2,
         });
         if (reconnectCandidates.length === 1) {
+          if (reconnectCandidates[0].institutionConnectionId)
+            predecessorConnectionIds.add(
+              reconnectCandidates[0].institutionConnectionId,
+            );
+          await tx.providerAccountLink.updateMany({
+            where: { accountId: reconnectCandidates[0].id },
+            data: { isCurrent: false },
+          });
           await tx.account.update({
             where: { id: reconnectCandidates[0].id },
             data: {
               dataSourceId: connection.dataSourceId,
               institutionConnectionId: connection.id,
               providerAccountId: account.account_id,
+              providerIdentityKey: identityKey,
               ...mapped,
             },
           });
-          reconnectedProviderAccountIds.add(account.account_id);
+          await tx.providerAccountLink.upsert({
+            where: {
+              userId_provider_providerAccountId: {
+                userId: ownerId,
+                provider: "PLAID",
+                providerAccountId: account.account_id,
+              },
+            },
+            update: {
+              accountId: reconnectCandidates[0].id,
+              institutionConnectionId: connection.id,
+              logicalIdentityKey: identityKey,
+              isCurrent: true,
+              lastSeenAt: now,
+            },
+            create: {
+              userId: ownerId,
+              provider: "PLAID",
+              providerAccountId: account.account_id,
+              logicalIdentityKey: identityKey,
+              accountId: reconnectCandidates[0].id,
+              institutionConnectionId: connection.id,
+              isCurrent: true,
+              firstSeenAt: now,
+              lastSeenAt: now,
+            },
+          });
+          reconciledProviderAccountIds.add(account.account_id);
         } else {
-          await tx.account.create({
+          const created = await tx.account.create({
             data: {
               userId: ownerId,
               dataSourceId: connection.dataSourceId,
               institutionConnectionId: connection.id,
               providerAccountId: account.account_id,
+              providerIdentityKey: identityKey,
               ...mapped,
+            },
+          });
+          await tx.providerAccountLink.create({
+            data: {
+              userId: ownerId,
+              provider: "PLAID",
+              providerAccountId: account.account_id,
+              logicalIdentityKey: identityKey,
+              accountId: created.id,
+              institutionConnectionId: connection.id,
+              isCurrent: true,
+              firstSeenAt: now,
+              lastSeenAt: now,
             },
           });
         }
@@ -283,7 +468,7 @@ export async function syncPlaidConnection(
           ownerId,
           connection.id,
           transaction,
-          reconnectedProviderAccountIds.has(transaction.account_id),
+          reconciledProviderAccountIds.has(transaction.account_id),
         );
       for (const removed of changes.removed) {
         await tx.transaction.updateMany({
@@ -314,13 +499,53 @@ export async function syncPlaidConnection(
           lastUpdatedAt: now,
         },
       });
+      for (const predecessorId of predecessorConnectionIds) {
+        const remainingAccounts = await tx.account.count({
+          where: { institutionConnectionId: predecessorId, isActive: true },
+        });
+        if (remainingAccounts > 0) continue;
+        const predecessor = await tx.institutionConnection.findUnique({
+          where: { id: predecessorId },
+          select: { status: true, dataSourceId: true },
+        });
+        if (
+          !predecessor ||
+          predecessor.status === ConnectionStatus.DISCONNECTED
+        )
+          continue;
+        await tx.institutionConnection.update({
+          where: { id: predecessorId },
+          data: {
+            status: ConnectionStatus.DISCONNECTED,
+            encryptedAccessToken: null,
+            syncStartedAt: null,
+            disconnectedAt: now,
+          },
+        });
+        await tx.dataSource.update({
+          where: { id: predecessor.dataSourceId },
+          data: { status: DataSourceStatus.INACTIVE },
+        });
+      }
     });
-    return {
+    const result: PlaidSyncResult = {
       accounts: accountResponse.data.accounts.length,
       added: changes.added.length,
       modified: changes.modified.length,
       removed: changes.removed.length,
     };
+    try {
+      await (options.detectRecurring ?? runRecurringDetection)(ownerId, {
+        database,
+        now,
+      });
+      result.recurringDetection = "completed";
+    } catch {
+      // Provider persistence is already committed. Detection is deliberately
+      // isolated so a projection failure cannot corrupt Plaid history.
+      result.recurringDetection = "failed";
+    }
+    return result;
   } catch (error) {
     const safe =
       error instanceof SafePlaidError ? error : normalizePlaidError(error);

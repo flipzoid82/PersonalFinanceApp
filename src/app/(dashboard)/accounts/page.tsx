@@ -22,6 +22,11 @@ export default async function AccountsPage({
     getPortfolioViewModel(user.id, now),
     searchParams,
   ]);
+  const visibleAccounts = portfolio.accounts.filter(
+    (account) =>
+      account.institutionConnection?.provider !== "PLAID" ||
+      account.institutionConnection.status !== ConnectionStatus.DISCONNECTED,
+  );
   return (
     <div className="mx-auto max-w-7xl">
       <p className="text-sm font-semibold text-[var(--semantic-info-text)]">
@@ -41,11 +46,12 @@ export default async function AccountsPage({
           Financial accounts
         </h2>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Active and inactive records remain visible. Only active values
-          contribute to totals.
+          Current connected accounts and manual records appear here. Retained
+          disconnected Plaid identities are listed under their historical
+          institution cards and never contribute to totals.
         </p>
         <div className="mt-4">
-          <AccountList accounts={portfolio.accounts} now={now} />
+          <AccountList accounts={visibleAccounts} now={now} />
         </div>
       </section>
 
@@ -97,3 +103,4 @@ export default async function AccountsPage({
     </div>
   );
 }
+import { ConnectionStatus } from "@prisma/client";

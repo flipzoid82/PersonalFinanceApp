@@ -49,7 +49,13 @@ describe("Calendar page states and structure", () => {
       screen.getByRole("heading", { name: "No recurring history yet" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Recurring-pattern detection is not implemented/),
+      screen.getByText(/connect Plaid Sandbox, or refresh detection/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Refresh recurring detection" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/predicted-only items never become overdue/i),
     ).toBeInTheDocument();
   });
 

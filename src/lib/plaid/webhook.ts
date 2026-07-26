@@ -69,7 +69,11 @@ export async function verifyPlaidWebhook(
 
 export async function processPlaidTransactionsWebhook(
   webhook: PlaidTransactionsWebhook,
-  options: { plaid?: PlaidClient; database?: PrismaClient } = {},
+  options: {
+    plaid?: PlaidClient;
+    database?: PrismaClient;
+    detectRecurring?: typeof import("@/lib/recurring").runRecurringDetection;
+  } = {},
 ) {
   const database = options.database ?? db;
   const connection = await database.institutionConnection.findFirst({
@@ -84,6 +88,7 @@ export async function processPlaidTransactionsWebhook(
     await syncPlaidConnection(connection.userId, connection.id, {
       plaid: options.plaid,
       database,
+      detectRecurring: options.detectRecurring,
     });
   } catch (error) {
     if (

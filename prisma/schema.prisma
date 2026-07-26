@@ -193,6 +193,8 @@ model User {
   sessions                   AuthSession[]
   dataSources                DataSource[]
   institutionConnections     InstitutionConnection[]
+  providerAccountLinks       ProviderAccountLink[]
+  accountMergeAudits         AccountMergeAudit[]
   accounts                   Account[]
   transactions               Transaction[]
   transactionOverrides       TransactionOverride[]
@@ -243,28 +245,29 @@ model DataSource {
 }
 
 model InstitutionConnection {
-  id                   String           @id @default(cuid())
-  userId               String           @map("user_id")
-  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dataSourceId         String           @map("data_source_id")
-  dataSource           DataSource       @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
+  id                   String                @id @default(cuid())
+  userId               String                @map("user_id")
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSourceId         String                @map("data_source_id")
+  dataSource           DataSource            @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
   provider             String
-  providerItemId       String?          @map("provider_item_id")
-  linkSessionId        String?          @unique @map("link_session_id")
-  institutionId        String?          @map("institution_id")
-  institutionName      String           @map("institution_name")
-  encryptedAccessToken String?          @map("encrypted_access_token")
-  status               ConnectionStatus @default(ACTIVE)
-  syncCursor           String?          @map("sync_cursor")
-  syncStartedAt        DateTime?        @map("sync_started_at")
-  lastAttemptedSyncAt  DateTime?        @map("last_attempted_sync_at")
-  lastSuccessfulSyncAt DateTime?        @map("last_successful_sync_at")
-  lastErrorCode        String?          @map("last_error_code")
-  lastErrorMessage     String?          @map("last_error_message")
-  disconnectedAt       DateTime?        @map("disconnected_at")
+  providerItemId       String?               @map("provider_item_id")
+  linkSessionId        String?               @unique @map("link_session_id")
+  institutionId        String?               @map("institution_id")
+  institutionName      String                @map("institution_name")
+  encryptedAccessToken String?               @map("encrypted_access_token")
+  status               ConnectionStatus      @default(ACTIVE)
+  syncCursor           String?               @map("sync_cursor")
+  syncStartedAt        DateTime?             @map("sync_started_at")
+  lastAttemptedSyncAt  DateTime?             @map("last_attempted_sync_at")
+  lastSuccessfulSyncAt DateTime?             @map("last_successful_sync_at")
+  lastErrorCode        String?               @map("last_error_code")
+  lastErrorMessage     String?               @map("last_error_message")
+  disconnectedAt       DateTime?             @map("disconnected_at")
   accounts             Account[]
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
+  providerAccountLinks ProviderAccountLink[]
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
 
   @@unique([provider, providerItemId])
   @@index([userId])
@@ -284,6 +287,7 @@ model Account {
   institutionConnectionId String?                     @map("institution_connection_id")
   institutionConnection   InstitutionConnection?      @relation(fields: [institutionConnectionId], references: [id], onDelete: SetNull)
   providerAccountId       String?                     @map("provider_account_id")
+  providerIdentityKey     String?                     @map("provider_identity_key") @db.VarChar(80)
   mask                    String?
   name                    String
   officialName            String?                     @map("official_name")
@@ -308,15 +312,54 @@ model Account {
   investmentSnapshots     InvestmentBalanceSnapshot[]
   investmentTransactions  InvestmentTransaction[]
   balanceSnapshots        BalanceSnapshot[]
+  providerAccountLinks    ProviderAccountLink[]
   createdAt               DateTime                    @default(now()) @map("created_at")
   updatedAt               DateTime                    @updatedAt @map("updated_at")
 
   @@unique([dataSourceId, providerAccountId])
+  @@unique([userId, providerIdentityKey])
   @@index([userId])
   @@index([userId, accountType, isActive])
   @@index([institutionConnectionId])
   @@index([institutionName])
   @@map("accounts")
+}
+
+model ProviderAccountLink {
+  userId                  String                @map("user_id")
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider                String
+  providerAccountId       String                @map("provider_account_id")
+  logicalIdentityKey      String?               @map("logical_identity_key") @db.VarChar(80)
+  accountId               String                @map("account_id")
+  account                 Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  institutionConnectionId String                @map("institution_connection_id")
+  institutionConnection   InstitutionConnection @relation(fields: [institutionConnectionId], references: [id], onDelete: Cascade)
+  isCurrent               Boolean               @default(false) @map("is_current")
+  firstSeenAt             DateTime              @default(now()) @map("first_seen_at")
+  lastSeenAt              DateTime              @default(now()) @map("last_seen_at")
+
+  @@id([userId, provider, providerAccountId])
+  @@unique([institutionConnectionId, accountId])
+  @@index([accountId])
+  @@index([institutionConnectionId, isCurrent])
+  @@index([userId, logicalIdentityKey])
+  @@map("provider_account_links")
+}
+
+model AccountMergeAudit {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String
+  canonicalAccountId String   @map("canonical_account_id")
+  duplicateAccountId String   @unique @map("duplicate_account_id")
+  reason             String
+  snapshot           Json
+  mergedAt           DateTime @default(now()) @map("merged_at")
+
+  @@index([userId, canonicalAccountId])
+  @@map("account_merge_audits")
 }
 
 model Transaction {
@@ -399,12 +442,17 @@ model RecurringStream {
   status               RecurringStatus    @default(ACTIVE)
   category             String?
   typicalAccountId     String?            @map("typical_account_id")
+  detectionKey         String?            @map("detection_key")
+  detectionVersion     Int?               @map("detection_version")
+  detectionMetadata    Json?              @map("detection_metadata")
+  lastDetectedAt       DateTime?          @map("last_detected_at")
   typicalAccount       Account?           @relation(fields: [typicalAccountId], references: [id], onDelete: NoAction)
   calendarEvents       CalendarEvent[]
   calendarOverrides    CalendarOverride[]
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 
+  @@unique([userId, detectionKey])
   @@index([userId])
   @@index([userId, predictedNextDate])
   @@index([typicalAccountId])
@@ -434,10 +482,13 @@ model CalendarEvent {
   status               CalendarEventStatus
   isUserConfirmed      Boolean              @default(false) @map("is_user_confirmed")
   notes                String?
+  projectionKey        String?              @map("projection_key")
   overrides            CalendarOverride[]
   createdAt            DateTime             @default(now()) @map("created_at")
   updatedAt            DateTime             @updatedAt @map("updated_at")
 
+  @@unique([userId, projectionKey])
+  @@unique([userId, linkedTransactionId])
   @@index([userId])
   @@index([userId, eventDate])
   @@index([status, eventDate])

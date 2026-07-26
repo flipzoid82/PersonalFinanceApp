@@ -16,13 +16,13 @@ export function NetWorthBreakdown({
     {
       title: "Assets and investments",
       items: portfolio.items.filter(
-        ({ category, isActive }) => category !== "debt" && isActive,
+        ({ category, isCurrent }) => category !== "debt" && isCurrent,
       ),
     },
     {
       title: "Debts",
       items: portfolio.items.filter(
-        ({ category, isActive }) => category === "debt" && isActive,
+        ({ category, isCurrent }) => category === "debt" && isCurrent,
       ),
     },
   ];

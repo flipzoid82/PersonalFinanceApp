@@ -406,6 +406,51 @@ describeDatabase("Milestone 6 Plaid Sandbox integration", () => {
     expect(concurrentClient.accountsGet).not.toHaveBeenCalled();
   });
 
+  it("keeps committed Plaid history when post-sync recurring detection fails", async () => {
+    const { connectionId } = await connect();
+    const client = plaidClient({
+      syncPages: [
+        {
+          added: [
+            transaction(
+              "persisted-before-detection-failure",
+              "account-available",
+            ),
+          ],
+          modified: [],
+          removed: [],
+          next_cursor: "detection-failure-cursor",
+          has_more: false,
+        },
+      ],
+    });
+    const result = await syncPlaidConnection(ownerId, connectionId, {
+      plaid: client,
+      database: prisma,
+      now: new Date(NOW.getTime() + 90_000),
+      detectRecurring: async () => {
+        throw new Error("synthetic detection failure");
+      },
+    });
+
+    expect(result.recurringDetection).toBe("failed");
+    expect(
+      await prisma.transaction.count({
+        where: {
+          userId: ownerId,
+          providerTransactionId: "persisted-before-detection-failure",
+        },
+      }),
+    ).toBe(1);
+    expect(
+      (
+        await prisma.institutionConnection.findUniqueOrThrow({
+          where: { id: connectionId },
+        })
+      ).syncCursor,
+    ).toBe("detection-failure-cursor");
+  });
+
   it("supports owner-scoped update mode, repair, webhook idempotency, and historical disconnect", async () => {
     const { connectionId } = await connect();
     const other = await prisma.user.create({
@@ -421,6 +466,13 @@ describeDatabase("Milestone 6 Plaid Sandbox integration", () => {
           modified: [],
           removed: [],
           next_cursor: "repair-cursor",
+          has_more: false,
+        },
+        {
+          added: [],
+          modified: [],
+          removed: [],
+          next_cursor: "webhook-cursor",
           has_more: false,
         },
       ],
@@ -477,6 +529,31 @@ describeDatabase("Milestone 6 Plaid Sandbox integration", () => {
       where: { id: connectionId },
       data: { syncStartedAt: null },
     });
+    const detectRecurring = vi.fn(async () => ({
+      eligibleTransactions: 0,
+      candidates: 0,
+      streamsCreated: 0,
+      streamsUpdated: 0,
+      projectionsCreated: 0,
+      projectionsUpdated: 0,
+      transactionsMatched: 0,
+      streamsMarkedInactive: 0,
+    }));
+    expect(
+      await processPlaidTransactionsWebhook(
+        {
+          webhook_type: "TRANSACTIONS",
+          webhook_code: "SYNC_UPDATES_AVAILABLE",
+          item_id: "sandbox-item",
+          environment: "sandbox",
+        },
+        { plaid: updateClient, database: prisma, detectRecurring },
+      ),
+    ).toBe("synced");
+    expect(detectRecurring).toHaveBeenCalledWith(
+      ownerId,
+      expect.objectContaining({ database: prisma }),
+    );
 
     const transactionCount = await prisma.transaction.count({
       where: { userId: ownerId },
@@ -571,5 +648,167 @@ describeDatabase("Milestone 6 Plaid Sandbox integration", () => {
         where: { providerTransactionId: "replacement-provider-transaction" },
       }),
     ).toMatchObject({ id: originalTransaction.id });
+  });
+
+  it("reuses an active logical account across replacement Items and repeated syncs", async () => {
+    const first = await connect();
+    const original = await prisma.account.findFirstOrThrow({
+      where: { providerAccountId: "account-available" },
+    });
+    const replacement = plaidClient({
+      accounts: [
+        {
+          ...account("active-replacement-account", "Sandbox Checking", 725),
+          mask: "1111",
+        } as AccountBase,
+      ],
+      syncPages: [
+        {
+          added: [
+            transaction(
+              "active-replacement-transaction",
+              "active-replacement-account",
+              {
+                name: "Transaction modified-transaction",
+                merchant_name: "Merchant modified-transaction",
+              },
+            ),
+          ],
+          modified: [],
+          removed: [],
+          next_cursor: "active-replacement-cursor",
+          has_more: false,
+        },
+      ],
+    });
+    vi.mocked(replacement.itemPublicTokenExchange).mockResolvedValueOnce({
+      data: {
+        access_token: TOKEN,
+        item_id: "active-replacement-item",
+        request_id: "request-id",
+      },
+    } as never);
+    const second = await exchangePlaidPublicToken(
+      ownerId,
+      {
+        publicToken: "active-replacement-token",
+        linkSessionId: "active-replacement-link",
+        institutionId: "sandbox-institution",
+      },
+      { plaid: replacement, database: prisma },
+    );
+
+    expect(
+      await prisma.account.count({
+        where: { userId: ownerId, source: "SYNCED" },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.account.findFirstOrThrow({
+        where: { userId: ownerId, source: "SYNCED" },
+      }),
+    ).toMatchObject({
+      id: original.id,
+      institutionConnectionId: second.connectionId,
+      providerAccountId: "active-replacement-account",
+    });
+    expect(
+      await prisma.institutionConnection.findUniqueOrThrow({
+        where: { id: first.connectionId },
+      }),
+    ).toMatchObject({ status: ConnectionStatus.DISCONNECTED });
+    expect(
+      await prisma.providerAccountLink.count({ where: { userId: ownerId } }),
+    ).toBe(2);
+    expect(
+      await prisma.providerAccountLink.count({
+        where: { userId: ownerId, isCurrent: true },
+      }),
+    ).toBe(1);
+    expect(await prisma.transaction.count({ where: { userId: ownerId } })).toBe(
+      3,
+    );
+
+    await syncPlaidConnection(ownerId, second.connectionId, {
+      database: prisma,
+      plaid: plaidClient({
+        accounts: [
+          account("active-replacement-account", "Sandbox Checking", 725),
+        ],
+        syncPages: [
+          {
+            added: [],
+            modified: [],
+            removed: [],
+            next_cursor: "repeated-cursor",
+            has_more: false,
+          },
+        ],
+      }),
+      now: new Date(NOW.getTime() + 1_000),
+    });
+    expect(
+      await prisma.account.count({
+        where: { userId: ownerId, source: "SYNCED" },
+      }),
+    ).toBe(1);
+  });
+
+  it("serializes concurrent replacement Item syncs without duplicate accounts", async () => {
+    await connect();
+    const clients = ["concurrent-a", "concurrent-b"].map((suffix) => {
+      const client = plaidClient({
+        accounts: [
+          account(`${suffix}-provider-account`, "Sandbox Checking", 800),
+        ],
+        syncPages: [
+          {
+            added: [],
+            modified: [],
+            removed: [],
+            next_cursor: `${suffix}-cursor`,
+            has_more: false,
+          },
+        ],
+      });
+      vi.mocked(client.itemPublicTokenExchange).mockResolvedValueOnce({
+        data: {
+          access_token: TOKEN,
+          item_id: `${suffix}-item`,
+          request_id: "request-id",
+        },
+      } as never);
+      return { client, suffix };
+    });
+
+    await Promise.all(
+      clients.map(({ client, suffix }) =>
+        exchangePlaidPublicToken(
+          ownerId,
+          {
+            publicToken: `${suffix}-token`,
+            linkSessionId: `${suffix}-link`,
+            institutionId: "sandbox-institution",
+          },
+          { plaid: client, database: prisma },
+        ),
+      ),
+    );
+
+    expect(
+      await prisma.account.count({
+        where: { userId: ownerId, source: "SYNCED" },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.providerAccountLink.count({
+        where: { userId: ownerId, isCurrent: true },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.institutionConnection.count({
+        where: { userId: ownerId, status: ConnectionStatus.ACTIVE },
+      }),
+    ).toBe(1);
   });
 });

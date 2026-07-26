@@ -137,4 +137,13 @@ describe("posted transaction matching", () => {
     ]);
     expect(best?.transaction.id).toBe("high");
   });
+
+  it("leaves equally plausible candidates unmatched", () => {
+    expect(
+      findBestTransactionMatch(event(), [
+        transaction({ id: "first" }),
+        transaction({ id: "second" }),
+      ]),
+    ).toBeUndefined();
+  });
 });

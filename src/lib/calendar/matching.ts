@@ -114,9 +114,16 @@ export function findBestTransactionMatch(
   event: EffectiveCalendarEvent,
   transactions: CalendarTransaction[],
 ) {
-  return transactions
+  const candidates = transactions
     .map((transaction) => scoreTransactionMatch(event, transaction))
     .filter((candidate): candidate is MatchCandidate => Boolean(candidate))
     .filter(({ score }) => score >= 0.35)
-    .sort((a, b) => b.score - a.score)[0];
+    .sort((a, b) => b.score - a.score);
+  if (
+    candidates[0] &&
+    candidates[1] &&
+    Math.abs(candidates[0].score - candidates[1].score) <= 0.05
+  )
+    return undefined;
+  return candidates[0];
 }

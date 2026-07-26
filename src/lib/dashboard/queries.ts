@@ -1,6 +1,7 @@
 import "server-only";
 import { CalendarEventStatus, TransactionStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { currentAccountWhere } from "@/lib/accounts/current";
 import {
   addUtcDays,
   startOfNextUtcMonth,
@@ -29,7 +30,7 @@ export async function getDashboardData(
     dataSources,
   ] = await Promise.all([
     db.account.findMany({
-      where: { userId: ownerId, isActive: true },
+      where: currentAccountWhere(ownerId),
       include: {
         dataSource: {
           select: {
