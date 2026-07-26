@@ -78,9 +78,15 @@ export async function PlaidConnectionManager({
                       <dl className="mt-3 grid gap-2 text-sm text-[var(--text-secondary)] sm:grid-cols-2">
                         <div>
                           <dt className="font-semibold text-[var(--text-primary)]">
-                            Accounts
+                            {disconnected
+                              ? "Retained account identities"
+                              : "Current accounts"}
                           </dt>
-                          <dd>{connection._count.accounts}</dd>
+                          <dd>
+                            {disconnected
+                              ? connection._count.providerAccountLinks
+                              : connection._count.accounts}
+                          </dd>
                         </div>
                         <div>
                           <dt className="font-semibold text-[var(--text-primary)]">
@@ -138,9 +144,31 @@ export async function PlaidConnectionManager({
                         />
                       </div>
                     ) : (
-                      <p className="text-sm text-[var(--text-secondary)]">
-                        Historical records retained. Use Connect to reconnect.
-                      </p>
+                      <div className="text-sm text-[var(--text-secondary)]">
+                        <p>
+                          Historical Item retained. It does not contribute to
+                          current totals. Use Connect to reconnect.
+                        </p>
+                        {connection.providerAccountLinks.length ? (
+                          <details className="mt-3">
+                            <summary className="cursor-pointer font-semibold text-[var(--text-primary)]">
+                              View retained accounts
+                            </summary>
+                            <ul className="mt-2 list-disc space-y-1 pl-5">
+                              {connection.providerAccountLinks.map((link) => (
+                                <li key={link.providerAccountId}>
+                                  {link.account.name}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : (
+                          <p className="mt-3">
+                            No account identities were recorded for this
+                            historical Item.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </Card>

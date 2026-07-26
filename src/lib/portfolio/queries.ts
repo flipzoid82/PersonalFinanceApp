@@ -16,6 +16,9 @@ export async function getPortfolioData(
             lastUpdatedAt: true,
           },
         },
+        institutionConnection: {
+          select: { id: true, provider: true, status: true },
+        },
         balanceSnapshots: {
           where: { userId: ownerId },
           orderBy: { capturedAt: "desc" },

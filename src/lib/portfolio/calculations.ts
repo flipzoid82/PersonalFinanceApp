@@ -8,6 +8,7 @@ import type {
   RawPortfolioData,
 } from "./types";
 import { titleCaseEnum } from "@/lib/dashboard/formatters";
+import { isCurrentConnectedAccount } from "@/lib/accounts/current";
 
 const ZERO = new Prisma.Decimal(0);
 
@@ -102,6 +103,7 @@ export function calculatePortfolio(
       updatedAt: latest.updatedAt,
       freshness: freshnessState(latest.updatedAt, now),
       isActive: account.isActive,
+      isCurrent: isCurrentConnectedAccount(account),
     });
   }
 
@@ -119,11 +121,12 @@ export function calculatePortfolio(
       updatedAt: asset.updatedAt,
       freshness: freshnessState(asset.updatedAt, now),
       isActive: asset.isActive,
+      isCurrent: asset.isActive,
     });
   }
 
   const activeItems = items.filter(
-    ({ isActive, valueAvailable }) => isActive && valueAvailable,
+    ({ isCurrent, valueAvailable }) => isCurrent && valueAvailable,
   );
   const totalAssets = activeItems
     .filter(({ category }) => category !== "debt")
@@ -136,8 +139,9 @@ export function calculatePortfolio(
     .reduce((total, { value }) => total.plus(value), ZERO);
   const affectedSources = ownedAccounts
     .filter(
-      ({ isActive, dataSource }) =>
-        isActive && dataSource.status !== DataSourceStatus.ACTIVE,
+      (account) =>
+        isCurrentConnectedAccount(account) &&
+        account.dataSource.status !== DataSourceStatus.ACTIVE,
     )
     .map(({ dataSource }) => dataSource.displayName);
   const partialReasons = [...new Set(affectedSources)].map(
@@ -146,7 +150,8 @@ export function calculatePortfolio(
   if (
     ownedAccounts.some(
       (account) =>
-        account.isActive && !latestAccountValue(account, now).isAvailable,
+        isCurrentConnectedAccount(account) &&
+        !latestAccountValue(account, now).isAvailable,
     )
   )
     partialReasons.push(
@@ -154,7 +159,7 @@ export function calculatePortfolio(
     );
 
   return {
-    isEmpty: items.filter(({ isActive }) => isActive).length === 0,
+    isEmpty: items.filter(({ isCurrent }) => isCurrent).length === 0,
     isPartial: partialReasons.length > 0,
     partialReasons,
     totalAssets,
@@ -164,8 +169,10 @@ export function calculatePortfolio(
     items: items.sort((a, b) => b.value.comparedTo(a.value)),
     accounts: ownedAccounts,
     manualAssets,
-    investmentAccounts: ownedAccounts.filter(({ accountType }) =>
-      INVESTMENT_ACCOUNT_TYPES.has(accountType),
+    investmentAccounts: ownedAccounts.filter(
+      (account) =>
+        isCurrentConnectedAccount(account) &&
+        INVESTMENT_ACCOUNT_TYPES.has(account.accountType),
     ),
   };
 }

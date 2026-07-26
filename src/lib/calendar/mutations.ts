@@ -13,6 +13,7 @@ import {
   TransactionStatus,
 } from "@prisma/client";
 import { db } from "@/lib/db";
+import { currentAccountWhere } from "@/lib/accounts/current";
 import { parseIsoDate } from "./dates";
 import { getEffectiveCalendarEvent } from "./effective";
 import { scoreTransactionMatch } from "./matching";
@@ -197,7 +198,7 @@ export async function createManualRecurringEvent(
   const date = parseIsoDate(input.date)!;
   if (input.accountId) {
     const account = await client.account.findFirst({
-      where: { id: input.accountId, userId: ownerId, isActive: true },
+      where: { id: input.accountId, ...currentAccountWhere(ownerId) },
       select: { id: true },
     });
     if (!account) throw new Error("Selected account is unavailable.");

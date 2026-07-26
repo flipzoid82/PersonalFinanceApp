@@ -217,6 +217,13 @@ export async function disconnectPlaidConnection(
         },
         data: { isActive: false },
       }),
+      database.providerAccountLink.updateMany({
+        where: {
+          userId: ownerId,
+          institutionConnectionId: connection.id,
+        },
+        data: { isCurrent: false, lastSeenAt: now },
+      }),
     ]);
   }
 }

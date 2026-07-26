@@ -50,6 +50,20 @@ export async function seedDevelopmentData(
     safeDate.setUTCMinutes(minute);
     return safeDate;
   };
+  const monthDay = (monthOffset: number, requestedDay: number) => {
+    const first = new Date(
+      Date.UTC(
+        referenceDate.getUTCFullYear(),
+        referenceDate.getUTCMonth() + monthOffset,
+        1,
+      ),
+    );
+    const lastDay = new Date(
+      Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    first.setUTCDate(Math.min(requestedDay, lastDay));
+    return first;
+  };
 
   return client.$transaction(async (tx) => {
     const existingOwner = await tx.user.findFirst({
@@ -372,6 +386,82 @@ export async function seedDevelopmentData(
       });
       return record;
     };
+
+    const detectionTransaction = async (
+      id: string,
+      values: {
+        merchant: string;
+        amount: string;
+        postedAt: Date | null;
+        status?: TransactionStatus;
+        category: string;
+        accountId?: string;
+      },
+    ) =>
+      tx.transaction.upsert({
+        where: { id },
+        update: {
+          userId: owner.id,
+          accountId: values.accountId ?? checking.id,
+          originalName: `${values.merchant.toUpperCase()} SYNTHETIC`,
+          merchantName: values.merchant,
+          amount: money(values.amount),
+          postedAt: values.postedAt,
+          status: values.status ?? TransactionStatus.POSTED,
+          providerCategory: values.category,
+          removedAt: null,
+        },
+        create: {
+          id,
+          userId: owner.id,
+          accountId: values.accountId ?? checking.id,
+          originalName: `${values.merchant.toUpperCase()} SYNTHETIC`,
+          merchantName: values.merchant,
+          amount: money(values.amount),
+          currency: "USD",
+          postedAt: values.postedAt,
+          status: values.status ?? TransactionStatus.POSTED,
+          providerCategory: values.category,
+        },
+      });
+
+    for (const [index, offset] of [-3, -2, -1].entries()) {
+      await detectionTransaction(`seed_detection_fixed_${index}`, {
+        merchant: "Example Cloud Storage",
+        amount: "19.9900",
+        postedAt: monthDay(offset, 5),
+        category: "ENTERTAINMENT_SUBSCRIPTION",
+      });
+      await detectionTransaction(`seed_detection_variable_${index}`, {
+        merchant: "Example Water Utility",
+        amount: ["72.1500", "91.8400", "83.2200"][index],
+        postedAt: monthDay(offset, 12),
+        category: "RENT_AND_UTILITIES_WATER",
+      });
+    }
+    for (const [index, offset] of [-42, -28, -14].entries()) {
+      await detectionTransaction(`seed_detection_income_${index}`, {
+        merchant: "Example Biweekly Employer",
+        amount: "2100.0000",
+        postedAt: day(offset),
+        category: "INCOME_WAGES",
+      });
+    }
+    for (const [index, offset] of [-2, -1].entries()) {
+      await detectionTransaction(`seed_detection_lookalike_${index}`, {
+        merchant: "Example Nonrecurring Lookalike",
+        amount: "44.0000",
+        postedAt: monthDay(offset, 20),
+        category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+      });
+    }
+    await detectionTransaction("seed_detection_pending", {
+      merchant: "Example Cloud Storage",
+      amount: "19.9900",
+      postedAt: null,
+      status: TransactionStatus.PENDING,
+      category: "ENTERTAINMENT_SUBSCRIPTION",
+    });
 
     await classifiedTransaction({
       transaction: {
@@ -1366,7 +1456,7 @@ if (process.env.NODE_ENV !== "test") {
   seedDevelopmentData()
     .then(({ ownerId }) => {
       console.log(
-        `Synthetic Milestone 5 portfolio, calendar, and dashboard data seeded for owner ${ownerId}.`,
+        `Synthetic Milestone 7 portfolio, Calendar, dashboard, and recurring-detection data seeded for owner ${ownerId}.`,
       );
     })
     .finally(() => prisma.$disconnect());

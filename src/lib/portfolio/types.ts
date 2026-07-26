@@ -1,6 +1,7 @@
 import type {
   AccountSource,
   AccountType,
+  ConnectionStatus,
   DataSourceStatus,
   InvestmentSource,
   ManualAssetType,
@@ -32,6 +33,11 @@ export type PortfolioAccount = {
     status: DataSourceStatus;
     lastUpdatedAt: Date | null;
   };
+  institutionConnection?: {
+    id?: string;
+    provider: string;
+    status: ConnectionStatus;
+  } | null;
   balanceSnapshots: Array<{
     id: string;
     currentBalance: Prisma.Decimal;
@@ -99,6 +105,7 @@ export type PortfolioItem = {
   updatedAt: Date | null;
   freshness: Freshness;
   isActive: boolean;
+  isCurrent: boolean;
 };
 
 export type PortfolioViewModel = {

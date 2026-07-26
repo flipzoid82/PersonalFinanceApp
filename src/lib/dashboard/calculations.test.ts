@@ -405,4 +405,52 @@ describe("dashboard financial calculations", () => {
     expect(partial.isPartial).toBe(true);
     expect(partial.sourceHealth[0].statusLabel).toBe("Partial");
   });
+
+  it("keeps replaced Plaid Items out of current source health when a replacement is active", () => {
+    const result = calculateDashboard(
+      data({
+        accounts: [account("checking", AccountType.CHECKING, "10")],
+        dataSources: [
+          {
+            id: "historical",
+            userId: "owner",
+            displayName: "Sandbox Bank (Plaid Sandbox)",
+            sourceType: DataSourceType.PLAID,
+            status: DataSourceStatus.INACTIVE,
+            lastUpdatedAt: NOW,
+            institutionConnections: [
+              {
+                status: ConnectionStatus.DISCONNECTED,
+                lastSuccessfulSyncAt: NOW,
+              },
+            ],
+          },
+          {
+            id: "current",
+            userId: "owner",
+            displayName: "Sandbox Bank (Plaid Sandbox)",
+            sourceType: DataSourceType.PLAID,
+            status: DataSourceStatus.ACTIVE,
+            lastUpdatedAt: NOW,
+            institutionConnections: [
+              {
+                status: ConnectionStatus.ACTIVE,
+                lastSuccessfulSyncAt: NOW,
+              },
+            ],
+          },
+        ],
+      }),
+      NOW,
+    );
+
+    expect(result.sourceHealth).toHaveLength(1);
+    expect(result.sourceHealth[0]).toMatchObject({
+      id: "current",
+      statusLabel: "Current",
+    });
+    expect(result.partialReasons).not.toContain(
+      "Sandbox Bank (Plaid Sandbox) is disconnected or needs attention.",
+    );
+  });
 });

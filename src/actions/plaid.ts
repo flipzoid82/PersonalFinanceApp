@@ -39,7 +39,11 @@ export async function syncPlaidConnectionAction(formData: FormData) {
   revalidatePlaidViews();
   feedback(
     "message",
-    `Plaid Sandbox sync complete: ${result.accounts} accounts, ${result.added} added, ${result.modified} modified, ${result.removed} removed transactions.`,
+    `Plaid Sandbox sync complete: ${result.accounts} accounts, ${result.added} added, ${result.modified} modified, ${result.removed} removed transactions.${
+      result.recurringDetection === "failed"
+        ? " Recurring detection could not refresh; retry it from Calendar."
+        : ""
+    }`,
   );
 }
 

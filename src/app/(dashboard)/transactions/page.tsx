@@ -7,12 +7,16 @@ import {
   formatDate,
   titleCaseEnum,
 } from "@/lib/dashboard/formatters";
+import { currentAccountWhere } from "@/lib/accounts/current";
 import { db } from "@/lib/db";
 
 export default async function TransactionsPage() {
   const owner = await requireUser();
   const transactions = await db.transaction.findMany({
-    where: { userId: owner.id, account: { userId: owner.id } },
+    where: {
+      userId: owner.id,
+      account: currentAccountWhere(owner.id),
+    },
     select: {
       id: true,
       originalName: true,

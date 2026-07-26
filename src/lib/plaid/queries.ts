@@ -18,7 +18,20 @@ export async function getPlaidConnections(ownerId: string) {
       dataSource: {
         select: { status: true, lastUpdatedAt: true },
       },
-      _count: { select: { accounts: true } },
+      providerAccountLinks: {
+        where: { isCurrent: false },
+        select: {
+          providerAccountId: true,
+          account: { select: { id: true, name: true } },
+        },
+        orderBy: { firstSeenAt: "asc" },
+      },
+      _count: {
+        select: {
+          accounts: { where: { isActive: true } },
+          providerAccountLinks: true,
+        },
+      },
     },
     orderBy: [{ disconnectedAt: "asc" }, { institutionName: "asc" }],
   });

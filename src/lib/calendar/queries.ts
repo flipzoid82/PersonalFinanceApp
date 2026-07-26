@@ -1,6 +1,10 @@
 import "server-only";
 import { TransactionStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import {
+  currentAccountStateWhere,
+  currentAccountWhere,
+} from "@/lib/accounts/current";
 import { addUtcDays, startOfUtcDay } from "./dates";
 import type { RawCalendarData } from "./types";
 
@@ -84,12 +88,16 @@ export async function getCalendarData(
           userId: ownerId,
           status: TransactionStatus.POSTED,
           postedAt: { gte: transactionStart },
+          account: {
+            userId: ownerId,
+            ...currentAccountStateWhere(),
+          },
         },
         select: transactionSelect,
         orderBy: { postedAt: "desc" },
       }),
       db.account.findMany({
-        where: { userId: ownerId, isActive: true },
+        where: currentAccountWhere(ownerId),
         select: { id: true, userId: true, name: true, currency: true },
         orderBy: { name: "asc" },
       }),

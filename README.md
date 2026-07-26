@@ -1,6 +1,6 @@
 # Personal Finance Dashboard
 
-A private, single-owner personal finance dashboard. Milestone 6 adds an explicitly Sandbox-only Plaid connection, encrypted access-token storage, normalized account and transaction sync, verified webhooks, repair, and disconnect flows. Every bundled or seeded financial value is fake; Plaid Production and real institutions are not supported.
+A private, single-owner personal finance dashboard. Milestone 7 adds deterministic recurring-pattern detection, bounded Calendar projections, and posted-transaction matching on top of the Sandbox-only Plaid integration. Every bundled or seeded financial value is fake; Plaid Production and real institutions are not supported.
 
 ## Prerequisites
 
@@ -37,7 +37,7 @@ The sign-in page links to an honest recovery-status page, but automated password
 - `pnpm db:generate` — generate Prisma Client
 - `pnpm db:migrate` — create/apply development migrations
 - `pnpm db:deploy` — apply checked-in migrations without creating new ones
-- `pnpm db:seed` — idempotently load synthetic Milestone 5 portfolio, calendar, and dashboard records
+- `pnpm db:seed` — idempotently load synthetic portfolio, Plaid-safe, calendar, dashboard, and recurring-detection records
 - `pnpm db:studio` — inspect the development database
 
 To run the destructive model tests locally, create a separate database whose name contains `test`, migrate it, and provide it only through `TEST_DATABASE_URL`. The tests refuse to run against a URL whose database name does not contain `test`.
@@ -70,7 +70,7 @@ Investment totals use the latest balance snapshot for each investment account, f
 
 Money calculations remain in Prisma `Decimal` until final locale-aware formatting. Dashboard calendar boundaries currently use UTC because the owner profile has no time-zone field. Aggregate demo totals assume the seeded USD currency; individual account and transaction rows retain their own currency labels. Sources become stale after seven days without a relevant update.
 
-Transactions, Bills, Spending, and Settings remain placeholders. There is no live sync, importing, recurring-pattern detection, automatic event generation, performance analysis, or production integration.
+Bills, Spending, and Settings remain placeholders. The Transactions route remains read-only and intentionally does not include Milestone 8 editing, search, or filters. There is no importing, performance analysis, or production integration.
 
 ## Milestone 4 calendar and recurring events
 
@@ -89,7 +89,7 @@ An occurrence is overdue only when it has a confirmed past due date, has no acce
 
 Payment matching considers only posted transactions in the same currency. It scores the normalized recurring merchant/description identity, account, Decimal-safe amount tolerance (the greater of 5 currency units or 10%), posting-date proximity within seven days, and compatible financial role. An unclassified transaction cannot become a high-confidence match. Strong matches can be accepted directly; lower-confidence suggestions require an explicit confirmation. Acceptance links the normalized transaction and records the absolute actual amount without changing transaction source fields. Manual “mark paid” remains available when no transaction should be linked.
 
-The seed includes clearly fake examples for every event type and confidence level, predicted and confirmed dates, a confirmed due date with a separate posting prediction, fixed and estimated amounts, paid/skipped/inactive/manual/needs-confirmation states, a month boundary, multiple events on one date, and both high- and low-confidence matching scenarios. Run `pnpm db:seed` more than once safely; no recurring detection or future-occurrence generation is performed.
+The seed includes clearly fake examples for every event type and confidence level, predicted and confirmed dates, a confirmed due date with a separate posting prediction, fixed and estimated amounts, paid/skipped/inactive/manual/needs-confirmation states, a month boundary, multiple events on one date, and both high- and low-confidence matching scenarios. Run `pnpm db:seed` more than once safely. Milestone 7 detection may now add inferred streams and bounded future occurrences from the dedicated synthetic history.
 
 Calendar freshness uses the existing seven-day threshold. Missing amounts or sources needing attention produce a partial-data notice while keeping available records visible. All calendar dates use UTC because the owner profile does not yet include a time zone. Currency is displayed per record, but conversion or aggregation across currencies is not implemented.
 
@@ -155,6 +155,21 @@ single unambiguous account reuses its local identity to avoid double counting.
 Balances missing from Plaid are displayed as unavailable and excluded from
 totals.
 
+Replacement Sandbox Items also use a deterministic
+owner/institution/mask/type/name identity when Plaid assigns new Item and
+provider account IDs. Historical Item-to-account identities remain in a
+separate audit relation, while only the current connection contributes to
+totals. Owner-level locking and database uniqueness prevent repeated or
+concurrent reconnects from creating a second logical account.
+
+For legacy development data created before this identity model, run
+`pnpm plaid:repair-accounts` first. It executes the complete repair in a
+transaction and rolls it back after reporting the proposed counts. After
+creating a backup and reviewing the report, run
+`pnpm plaid:repair-accounts -- --apply`. The repair is idempotent, remaps
+dependent records, records merged account metadata, and retains redundant
+transaction and stream rows as inactive audit history.
+
 Plaid signs webhooks with an ES256 JWT in `Plaid-Verification`. The endpoint
 validates the official JWK, algorithm, key lifetime, five-minute issue window,
 and SHA-256 raw-body digest before finding the Item by its stored provider ID.
@@ -165,7 +180,62 @@ Most tests use deterministic mocked Plaid responses. Optional physical testing
 must use official Sandbox credentials and Sandbox institutions only. This
 milestone does not support Plaid Production, real bank credentials, payments,
 transfers, identity, liabilities, income, Auth/routing data, automatic
-recurring detection, or Milestone 7 imports.
+Fidelity sync, or provider imports.
+
+## Milestone 7 recurring detection
+
+Recurring detection uses normalized local posted transactions on active
+owner-owned accounts. It excludes pending, canceled, removed, report-excluded,
+refund, investment, cash-withdrawal, unsupported fee/interest, unclassified,
+and generic-transfer records. Transaction overrides take precedence for the
+effective merchant, category, financial role, and report exclusion; original
+provider values remain unchanged.
+
+Counterparties are normalized deterministically by case/whitespace,
+punctuation, common domain suffixes, and conservative trailing numeric
+references. Detection groups only within the same owner, account, currency,
+flow direction, financial role, recurring type, and normalized counterparty.
+No fuzzy merchant merging or cross-account grouping occurs.
+
+Supported inferred frequencies are weekly (7 ±2 days), biweekly (14 ±3),
+semimonthly with two calendar anchors, monthly with ±5-day calendar drift,
+quarterly with ±10-day drift, and annual with ±14-day drift. Three observations
+are required except for a clear annual pair. One missing cycle is tolerated.
+
+Expected amount is the exact-Decimal median. Median absolute deviation
+determines fixed versus estimated amounts and limits outlier influence.
+Confidence combines observation count, interval regularity, amount stability,
+merchant quality, account consistency, continuity, and missed-cycle penalties.
+High begins at `0.80`; medium at `0.55`. Only high and medium candidates create
+events.
+
+Inferred streams and projections use nullable owner-scoped deterministic keys,
+so repeated or concurrent runs update rather than duplicate. Calendar
+projection is bounded to 90 days, except that an annual stream retains one next
+occurrence. Two missed cycles make only an inferred, unconfirmed stream
+inactive; history remains intact.
+
+Predicted posting dates never populate confirmed due dates. Existing Calendar
+overrides and user-confirmed values remain authoritative. Predicted-only events
+never become overdue.
+
+Eligible posted transactions can satisfy projected events using exact stream
+identity, account, currency, financial role/direction, Decimal-safe amount
+tolerance, and a five- or seven-day date window. Pending/removed transactions
+cannot match, ambiguous candidates remain unmatched, and one transaction
+cannot satisfy two events.
+
+Detection runs after a successfully committed Plaid exchange, manual sync,
+repair, or verified transaction webhook. A detection failure cannot roll back
+Plaid history. Calendar also provides an authenticated “Refresh recurring
+detection” recovery control. PostgreSQL advisory locking plus unique indexes
+protect overlapping runs.
+
+The synthetic seed includes fixed monthly, variable monthly, biweekly income,
+an insufficient-history lookalike, and pending activity. Run the seed twice,
+then use Calendar’s refresh control to demonstrate idempotent projection.
+See [the Milestone 7 architecture note](docs/architecture-milestone-7.md) for
+normalization tradeoffs, score weights, matching caps, and schema details.
 
 ## Data model
 
@@ -192,13 +262,12 @@ these values.
 
 ## Current status
 
-Milestone 6 includes authenticated, owner-scoped Plaid Sandbox Link, exchange,
-encrypted credential storage, account and cursor-based transaction sync,
-verified webhooks, manual sync, repair, disconnect, and read-only normalized
-transaction display. Milestones 1–5 remain intact.
+Milestone 7 includes owner-scoped recurring detection, confidence scoring,
+inferred-stream upsert, bounded Calendar projection, posted-only matching, and
+Plaid sync/webhook triggering. Milestones 1–6 remain intact.
 
 No real-institution or Plaid Production integration, automatic Fidelity sync,
-CSV/PDF parsing, import UI, recurring-pattern detection, automatic event
-generation, bill payment, investment performance analysis, theme selector,
-multi-user feature, or production deployment exists. See
+CSV/PDF parsing, import UI, Milestone 8 transaction management, full Bills or
+Spending product, bill payment, investment performance analysis, theme
+selector, multi-user feature, or production deployment exists. See
 `docs/Plan Docs/build-plan.md` for the future sequence.

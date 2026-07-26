@@ -30,8 +30,27 @@ function sourceLabel(source: DashboardDataSource): SourceHealth["sourceLabel"] {
 }
 
 export function deriveDashboardState(data: RawDashboardData, now: Date) {
-  const ownedSources = data.dataSources.filter(
+  const allOwnedSources = data.dataSources.filter(
     (source) => source.userId === data.ownerId,
+  );
+  const currentPlaidSourceNames = new Set(
+    allOwnedSources
+      .filter(
+        (source) =>
+          source.sourceType === DataSourceType.PLAID &&
+          source.institutionConnections.some(
+            ({ status }) => status !== ConnectionStatus.DISCONNECTED,
+          ),
+      )
+      .map(({ displayName }) => displayName),
+  );
+  const ownedSources = allOwnedSources.filter(
+    (source) =>
+      source.sourceType !== DataSourceType.PLAID ||
+      !currentPlaidSourceNames.has(source.displayName) ||
+      source.institutionConnections.some(
+        ({ status }) => status !== ConnectionStatus.DISCONNECTED,
+      ),
   );
   const ownedAccounts = data.accounts.filter(
     (account) => account.userId === data.ownerId,
