@@ -11,11 +11,17 @@ vi.mock("@/components/navigation", () => ({
   DesktopNavigation: () => null,
   MobileNavigation: () => null,
 }));
+vi.mock("@/components/session/session-security-controller", () => ({
+  SessionSecurityController: () => <div data-testid="session-controller" />,
+}));
+vi.mock("@/components/session/session-sign-out-button", () => ({
+  SessionSignOutButton: () => <button type="button">Sign out</button>,
+}));
 
 import DashboardLayout from "./layout";
 
 describe("authenticated dashboard layout", () => {
-  it("wires Sign out as a form submit control", async () => {
+  it("wires the cross-tab-aware Sign out control and timeout controller", async () => {
     mocks.requireUser.mockResolvedValue({
       id: "owner-id",
       email: "owner@example.test",
@@ -26,8 +32,9 @@ describe("authenticated dashboard layout", () => {
 
     expect(screen.getByRole("button", { name: "Sign out" })).toHaveAttribute(
       "type",
-      "submit",
+      "button",
     );
+    expect(screen.getByTestId("session-controller")).toBeInTheDocument();
     expect(mocks.requireUser).toHaveBeenCalledOnce();
   });
 

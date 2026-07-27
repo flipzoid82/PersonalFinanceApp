@@ -32,7 +32,7 @@ export async function syncPlaidConnectionAction(formData: FormData) {
   const connectionId = idSchema.safeParse(formData.get("connectionId"));
   if (!connectionId.success)
     feedback("error", "The Plaid Sandbox connection was not found.");
-  const owner = await requireUser();
+  const owner = await requireUser({ activity: "meaningful" });
   const result = await syncPlaidConnection(owner.id, connectionId.data).catch(
     (error: unknown) => feedback("error", safeMessage(error)),
   );
@@ -51,7 +51,7 @@ export async function disconnectPlaidConnectionAction(formData: FormData) {
   const connectionId = idSchema.safeParse(formData.get("connectionId"));
   if (!connectionId.success)
     feedback("error", "The Plaid Sandbox connection was not found.");
-  const owner = await requireUser();
+  const owner = await requireUser({ activity: "meaningful" });
   await disconnectPlaidConnection(owner.id, connectionId.data).catch(
     (error: unknown) => feedback("error", safeMessage(error)),
   );

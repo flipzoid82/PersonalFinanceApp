@@ -1,5 +1,9 @@
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import {
+  semanticTextClasses,
+  type SemanticTone,
+} from "@/components/ui/semantic";
 import { cn } from "@/lib/utils";
 
 export function MetricCard({
@@ -15,7 +19,7 @@ export function MetricCard({
   support: string;
   href: string;
   order: string;
-  tone?: "default" | "negative";
+  tone?: "default" | SemanticTone;
 }) {
   return (
     <Card
@@ -29,7 +33,7 @@ export function MetricCard({
         <p
           className={cn(
             "mt-4 text-2xl font-bold tracking-tight sm:text-3xl",
-            tone === "negative" && "text-rose-700",
+            tone !== "default" && semanticTextClasses[tone],
           )}
         >
           {value}

@@ -1,6 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { SemanticBadge, SemanticValue, semanticToneClasses } from "./semantic";
+import {
+  SemanticBadge,
+  SemanticValue,
+  semanticTextClasses,
+  semanticToneClasses,
+} from "./semantic";
 
 describe("semantic financial variants", () => {
   it.each([
@@ -12,6 +17,7 @@ describe("semantic financial variants", () => {
     ["muted", "--semantic-muted"],
   ] as const)("uses centralized %s theme variables", (tone, variable) => {
     expect(semanticToneClasses[tone]).toContain(variable);
+    expect(semanticTextClasses[tone]).toContain(`${variable}-text`);
   });
 
   it("pairs semantic styling with visible non-color labels and signs", () => {

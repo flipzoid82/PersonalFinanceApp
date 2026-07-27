@@ -67,7 +67,7 @@ export async function updateCalendarEventAction(formData: FormData) {
     notes: formData.get("notes"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   let message: string;
   try {
     message = await applyCalendarEventAction(user.id, parsed.data);
@@ -83,7 +83,7 @@ export async function deactivateRecurringStreamAction(formData: FormData) {
     streamId: formData.get("streamId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   let message: string;
   try {
     message = await deactivateRecurringStream(user.id, parsed.data.streamId);
@@ -101,7 +101,7 @@ export async function acceptPaymentMatchAction(formData: FormData) {
     confirmLowConfidence: formData.get("confirmLowConfidence") === "true",
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   let message: string;
   try {
     message = await acceptPaymentMatch(
@@ -130,7 +130,7 @@ export async function createManualRecurringEventAction(formData: FormData) {
     notes: formData.get("notes"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await createManualRecurringEvent(user.id, parsed.data);
   } catch (error) {

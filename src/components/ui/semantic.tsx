@@ -23,6 +23,15 @@ export const semanticToneClasses: Record<SemanticTone, string> = {
     "border-[var(--semantic-muted-border)] bg-[var(--semantic-muted-bg)] text-[var(--semantic-muted-text)]",
 };
 
+export const semanticTextClasses: Record<SemanticTone, string> = {
+  positive: "text-[var(--semantic-positive-text)]",
+  negative: "text-[var(--semantic-negative-text)]",
+  warning: "text-[var(--semantic-warning-text)]",
+  info: "text-[var(--semantic-info-text)]",
+  investment: "text-[var(--semantic-investment-text)]",
+  muted: "text-[var(--semantic-muted-text)]",
+};
+
 export function SemanticBadge({
   tone,
   className,
@@ -52,15 +61,7 @@ export function SemanticValue({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "font-semibold",
-        semanticToneClasses[tone]
-          .split(" ")
-          .find((value) => value.startsWith("text-")),
-        className,
-      )}
-    >
+    <span className={cn("font-semibold", semanticTextClasses[tone], className)}>
       <span className="sr-only">{label}: </span>
       {children}
     </span>
