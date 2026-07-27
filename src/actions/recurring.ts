@@ -22,7 +22,7 @@ function feedbackUrl(path: string, key: "message" | "error", value: string) {
 
 export async function refreshRecurringDetectionAction(formData: FormData) {
   const path = returnPath(formData);
-  const owner = await requireUser();
+  const owner = await requireUser({ activity: "meaningful" });
   const result = await runRecurringDetection(owner.id).catch(() => null);
   if (!result)
     redirect(

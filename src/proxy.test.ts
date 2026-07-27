@@ -4,7 +4,11 @@ import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
-import { DASHBOARD_ROUTES, SESSION_COOKIE_NAME } from "@/lib/auth-constants";
+import {
+  DASHBOARD_ROUTES,
+  SESSION_COOKIE_NAME,
+  SESSION_EXPIRATION_COOKIE_NAME,
+} from "@/lib/auth-constants";
 import { proxy } from "./proxy";
 
 function dashboardPageRoutes(
@@ -58,7 +62,25 @@ describe("server-side dashboard route protection", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it.each(["/login", "/forgot-password"])(
+  it.each(DASHBOARD_ROUTES)(
+    "preserves expiration context on direct navigation to %s after cookie clearing",
+    (pathname) => {
+      const response = proxy(
+        new NextRequest(`http://localhost:3000${pathname}`, {
+          headers: {
+            cookie: `${SESSION_EXPIRATION_COOKIE_NAME}=1`,
+          },
+        }),
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        "http://localhost:3000/login?reason=expired",
+      );
+    },
+  );
+
+  it.each(["/login", "/forgot-password", "/api/session/end"])(
     "keeps the public route %s available without a cookie",
     (pathname) => {
       const response = proxy(
@@ -69,6 +91,23 @@ describe("server-side dashboard route protection", () => {
       expect(response.headers.get("location")).toBeNull();
     },
   );
+
+  it("does not loop on the expiration login or session-ending routes", () => {
+    for (const pathname of [
+      "/login?reason=expired",
+      "/api/session/end?reason=expired",
+    ]) {
+      const response = proxy(
+        new NextRequest(`http://localhost:3000${pathname}`, {
+          headers: {
+            cookie: `${SESSION_EXPIRATION_COOKIE_NAME}=1`,
+          },
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+    }
+  });
 
   it("allows the verified Plaid webhook endpoint without an owner cookie", () => {
     const response = proxy(

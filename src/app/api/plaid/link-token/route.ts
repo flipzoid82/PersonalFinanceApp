@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requireApiUser } from "@/lib/auth";
 import { createPlaidLinkToken } from "@/lib/plaid";
 import { plaidApiError, requireSameOrigin } from "../request";
 
@@ -11,7 +11,7 @@ const inputSchema = z.object({
 export async function POST(request: Request) {
   try {
     requireSameOrigin(request);
-    const owner = await requireUser();
+    const owner = await requireApiUser({ activity: "meaningful" });
     const input = inputSchema.parse(await request.json());
     const linkToken = await createPlaidLinkToken(owner.id, input.connectionId);
     return NextResponse.json({ linkToken });

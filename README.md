@@ -26,6 +26,56 @@ A private, single-owner personal finance dashboard. Milestone 7 adds determinist
 
 The sign-in page links to an honest recovery-status page, but automated password reset is not configured. It does not use security questions or collect reset information. The planned secure flow uses a single-use, short-lived token delivered to the verified owner email, generic request responses, rate limiting, and invalidation of all existing owner sessions after a successful reset. Until that work is implemented, the installation operator must restore access through the local `owner:create` workflow.
 
+## Session security
+
+Authentication remains owner-only and uses opaque, server-generated session
+tokens. The browser receives the token only in a `HttpOnly`, `SameSite=Lax`,
+path-wide cookie (`Secure` in production). PostgreSQL stores only an
+HMAC-SHA-256 digest, plus the session lifecycle timestamps and minimal
+revocation reason; raw tokens are never persisted or logged.
+
+The server independently enforces a 15-minute inactivity timeout and an
+eight-hour absolute timeout. Two minutes before the earlier deadline, every
+open dashboard tab shows an accessible warning. “Stay signed in” asks the
+server to renew only the idle deadline and can never move the absolute
+deadline. Passive status checks, rendering, prefetching, polling, and Plaid
+webhooks do not extend a session. Explicit dashboard navigation and
+authenticated mutations are meaningful activity, with database writes
+throttled to once per minute.
+
+Logout revokes the current database session, clears the cookie, coordinates
+the result across tabs, and returns to `/login`. Timeout does the same and
+uses `/login?reason=expired` for a generic explanation. Focus, visibility,
+page-show, browser wake, and online events reconcile against server time, so a
+sleeping or offline tab cannot rely on a stale client countdown. Unsaved form
+changes may be lost when a session ends.
+
+The server policy can be shortened for local physical testing by placing the
+overrides in the local `.env` file and restarting the development server:
+
+```dotenv
+SESSION_IDLE_TIMEOUT_SECONDS="900"
+SESSION_WARNING_THRESHOLD_SECONDS="120"
+SESSION_ABSOLUTE_TIMEOUT_SECONDS="28800"
+SESSION_ACTIVITY_THROTTLE_SECONDS="60"
+```
+
+`.env.example` documents the available variables and defaults; Next.js does
+not use it as runtime configuration. Do not commit `.env`.
+
+The warning threshold must be shorter than the idle timeout, and the absolute
+timeout must not be shorter than the idle timeout. These variables are
+server-only; the status response exposes only the current deadlines, server
+time, warning threshold, and safe status. Existing pre-Milestone-7.5 sessions
+are retained as revoked audit rows during migration and require one fresh
+sign-in. Revoked rows are cleaned up after 30 days during login rather than on
+every request.
+
+Current limitations are intentional: there is no MFA, passkey, remembered
+device, device/session management, sign-out-all-devices, login-history, or
+user-configurable timeout UI. Those are future security scope, not Milestone
+7.5.
+
 ## Commands
 
 - `pnpm dev` — local development server

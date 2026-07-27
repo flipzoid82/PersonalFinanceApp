@@ -25,6 +25,28 @@ describe("password recovery messaging", () => {
     ).toHaveAttribute("href", "/forgot-password");
   });
 
+  it("shows a generic security message only for timeout redirects", async () => {
+    mocks.getCurrentUser.mockResolvedValue(null);
+    const { unmount } = render(
+      await LoginPage({
+        searchParams: Promise.resolve({ reason: "expired" }),
+      }),
+    );
+    expect(
+      screen.getByText(
+        "Your session expired for your security. Please sign in again.",
+      ),
+    ).toBeInTheDocument();
+
+    unmount();
+    render(
+      await LoginPage({
+        searchParams: Promise.resolve({ reason: "logout" }),
+      }),
+    );
+    expect(screen.queryByText(/session expired/i)).not.toBeInTheDocument();
+  });
+
   it("honestly reports that recovery is unavailable without collecting secrets", () => {
     render(<ForgotPasswordPage />);
 

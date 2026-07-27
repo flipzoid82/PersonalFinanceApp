@@ -23,4 +23,16 @@ describe("theme foundations", () => {
     ])
       expect(css).toContain(token);
   });
+
+  it("defines semantic financial text tokens in light and both dark-theme paths", () => {
+    for (const token of [
+      "--semantic-positive-text:",
+      "--semantic-negative-text:",
+      "--semantic-warning-text:",
+      "--semantic-info-text:",
+      "--semantic-investment-text:",
+      "--semantic-muted-text:",
+    ])
+      expect(css.match(new RegExp(token, "g"))).toHaveLength(3);
+  });
 });

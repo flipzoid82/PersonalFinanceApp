@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverviewDashboard } from "./overview-dashboard";
 import type { DashboardViewModel } from "@/lib/dashboard/types";
@@ -93,6 +93,43 @@ describe("OverviewDashboard states", () => {
     expect(
       screen.getByRole("link", { name: /Upcoming Bills/ }),
     ).toHaveAttribute("href", "/calendar?view=upcoming&days=14");
+  });
+
+  it("applies established semantic tones with visible financial labels and signs", () => {
+    render(
+      <OverviewDashboard
+        dashboard={DashboardWithValues()}
+        now={new Date("2026-07-21T12:00:00.000Z")}
+      />,
+    );
+
+    const expectations = [
+      ["Net Worth", "$575.00", "--semantic-positive-text"],
+      ["Cash", "$100.00", "--semantic-positive-text"],
+      ["Credit Card Debt", "$25.00", "--semantic-negative-text"],
+      ["Investments", "$500.00", "--semantic-investment-text"],
+      ["Income This Month", "$1,000.00", "--semantic-positive-text"],
+      ["Spending This Month", "$300.00", "--semantic-negative-text"],
+      ["Net Cash Flow", "$700.00", "--semantic-positive-text"],
+      ["Upcoming Bills", "$0.00", "--semantic-warning-text"],
+    ] as const;
+
+    for (const [label, value, token] of expectations) {
+      const link = screen.getByText(label).closest("a");
+      expect(link).not.toBeNull();
+      expect(within(link!).getByText(value)).toHaveClass(
+        `text-[var(${token})]`,
+      );
+    }
+
+    expect(
+      screen.getByRole("link", { name: /Credit Card Debt.*\$25\.00/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: /Net Cash Flow.*Income minus spending/i,
+      }),
+    ).toBeInTheDocument();
   });
 });
 

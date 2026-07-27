@@ -126,7 +126,7 @@ export async function createManualAccountAction(formData: FormData) {
   const path = returnPath(formData);
   const parsed = accountSchema.safeParse(accountValues(formData));
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await createManualAccount(user.id, parsed.data);
   } catch (error) {
@@ -143,7 +143,7 @@ export async function updateManualAccountAction(formData: FormData) {
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
   const { accountId, ...input } = parsed.data;
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await updateManualAccount(user.id, accountId, input);
   } catch (error) {
@@ -158,7 +158,7 @@ export async function deactivateManualAccountAction(formData: FormData) {
     accountId: formData.get("accountId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deactivateManualAccount(user.id, parsed.data.accountId);
   } catch (error) {
@@ -173,7 +173,7 @@ export async function deleteManualAccountAction(formData: FormData) {
     accountId: formData.get("accountId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deleteManualAccount(user.id, parsed.data.accountId);
   } catch (error) {
@@ -191,7 +191,7 @@ export async function addBalanceSnapshotAction(formData: FormData) {
     capturedAt: formData.get("capturedAt"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await addBalanceSnapshot(user.id, parsed.data);
   } catch (error) {
@@ -206,7 +206,7 @@ export async function deleteBalanceSnapshotAction(formData: FormData) {
     snapshotId: formData.get("snapshotId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deleteBalanceSnapshot(user.id, parsed.data.snapshotId);
   } catch (error) {
@@ -219,7 +219,7 @@ export async function createManualAssetAction(formData: FormData) {
   const path = returnPath(formData);
   const parsed = manualAssetSchema.safeParse(assetValues(formData));
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await createManualAsset(user.id, parsed.data);
   } catch (error) {
@@ -236,7 +236,7 @@ export async function updateManualAssetAction(formData: FormData) {
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
   const { assetId, ...input } = parsed.data;
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await updateManualAsset(user.id, assetId, input);
   } catch (error) {
@@ -251,7 +251,7 @@ export async function deactivateManualAssetAction(formData: FormData) {
     assetId: formData.get("assetId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deactivateManualAsset(user.id, parsed.data.assetId);
   } catch (error) {
@@ -266,7 +266,7 @@ export async function deleteManualAssetAction(formData: FormData) {
     assetId: formData.get("assetId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deleteManualAsset(user.id, parsed.data.assetId);
   } catch (error) {
@@ -281,7 +281,7 @@ export async function addInvestmentSnapshotAction(formData: FormData) {
     investmentSnapshotValues(formData),
   );
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await addInvestmentSnapshot(user.id, parsed.data);
   } catch (error) {
@@ -298,7 +298,7 @@ export async function updateInvestmentSnapshotAction(formData: FormData) {
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
   const { snapshotId, ...input } = parsed.data;
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await updateInvestmentSnapshot(user.id, snapshotId, input);
   } catch (error) {
@@ -313,7 +313,7 @@ export async function deleteInvestmentSnapshotAction(formData: FormData) {
     snapshotId: formData.get("snapshotId"),
   });
   if (!parsed.success) finish(path, "error", validationMessage(parsed.error));
-  const user = await requireUser();
+  const user = await requireUser({ activity: "meaningful" });
   try {
     await deleteInvestmentSnapshot(user.id, parsed.data.snapshotId);
   } catch (error) {

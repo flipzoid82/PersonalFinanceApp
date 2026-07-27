@@ -46,6 +46,9 @@ export function OverviewDashboard({
         : "Assets minus debts",
       href: "/net-worth",
       order: "order-1",
+      tone: dashboard.metrics.netWorth.isNegative()
+        ? ("negative" as const)
+        : ("positive" as const),
     },
     {
       label: "Cash",
@@ -56,6 +59,7 @@ export function OverviewDashboard({
           : `${formatCurrency(dashboard.metrics.availableCash)} available`,
       href: "/accounts?type=cash",
       order: "order-2",
+      tone: "positive" as const,
     },
     {
       label: "Credit Card Debt",
@@ -66,6 +70,7 @@ export function OverviewDashboard({
           : `${formatPercent(dashboard.metrics.creditUtilization)} utilization`,
       href: "/accounts?type=credit-card",
       order: "order-3",
+      tone: "negative" as const,
     },
     {
       label: "Investments",
@@ -73,6 +78,7 @@ export function OverviewDashboard({
       support: `${dashboard.investmentAccounts.length} investment account${dashboard.investmentAccounts.length === 1 ? "" : "s"}`,
       href: "/investments",
       order: "order-8 xl:order-4",
+      tone: "investment" as const,
     },
     {
       label: "Income This Month",
@@ -80,6 +86,7 @@ export function OverviewDashboard({
       support: "Posted, explicitly classified income",
       href: "/transactions",
       order: "order-5",
+      tone: "positive" as const,
     },
     {
       label: "Spending This Month",
@@ -87,6 +94,7 @@ export function OverviewDashboard({
       support: "Posted expenses after refunds and exclusions",
       href: "/spending?view=expenses",
       order: "order-6",
+      tone: "negative" as const,
     },
     {
       label: "Net Cash Flow",
@@ -98,7 +106,7 @@ export function OverviewDashboard({
       order: "order-7",
       tone: dashboard.metrics.cashFlow.isNegative()
         ? ("negative" as const)
-        : undefined,
+        : ("positive" as const),
     },
     {
       label: "Upcoming Bills",
@@ -108,6 +116,7 @@ export function OverviewDashboard({
         : "No expected outflows in the next 14 days",
       href: "/calendar?view=upcoming&days=14",
       order: "order-4 xl:order-8",
+      tone: "warning" as const,
     },
   ];
 

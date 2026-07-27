@@ -1,10 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "./lib/auth-constants";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_EXPIRATION_COOKIE_NAME,
+} from "./lib/auth-constants";
 
 const PUBLIC_PATHS = [
   "/login",
   "/forgot-password",
   "/api/plaid/webhook",
+  "/api/session/end",
 ] as const;
 
 function isPublicPath(pathname: string) {
@@ -23,7 +27,11 @@ export function proxy(request: NextRequest) {
   }
 
   if (!request.cookies.get(SESSION_COOKIE_NAME)?.value) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    if (request.cookies.get(SESSION_EXPIRATION_COOKIE_NAME)?.value === "1") {
+      loginUrl.searchParams.set("reason", "expired");
+    }
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
@@ -31,6 +39,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!login(?:/|$)|forgot-password(?:/|$)|api/plaid/webhook(?:/|$)|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login(?:/|$)|forgot-password(?:/|$)|api/plaid/webhook(?:/|$)|api/session/end(?:/|$)|_next/static|_next/image|favicon.ico).*)",
   ],
 };
