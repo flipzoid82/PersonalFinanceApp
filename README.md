@@ -24,6 +24,44 @@ A private, single-owner personal finance dashboard. Milestone 7 adds determinist
 
 `owner:create` creates or updates the same owner email and refuses to add a different second user. The seed reuses an existing owner and never changes that owner's email, name, or password hash. If no owner exists, it creates a clearly synthetic `example.test` owner with login disabled; run `owner:create` afterward to configure usable credentials.
 
+## Local Development Startup
+
+After the one-time dependency, `.env`, and owner setup above, normal Windows
+development startup is:
+
+```powershell
+pnpm dev:start
+```
+
+This command verifies Node, pnpm, Docker, dependencies, `.env`, and the owner
+record; starts the PostgreSQL Compose service when needed; waits for database
+health; generates Prisma Client; safely applies checked-in pending migrations;
+starts or reuses only this project's Next.js development server; waits for
+`/login`; and opens `http://localhost:3000/login`. It does not install
+dependencies, reset or seed the database, edit `.env`, or enter owner
+credentials. Login always remains manual.
+
+Use the supporting commands as follows:
+
+- `pnpm dev:doctor` reports required and optional checks in `PASS`, `WARN`, and
+  `FAIL` form without printing passwords, tokens, keys, cookies, owner data, or
+  connection-string passwords.
+- `pnpm dev:stop` stops only a process tree that is verified as this project's
+  Next.js server. It also stops ngrok only when this workflow started it,
+  removes ignored runtime state/log files, and leaves PostgreSQL running.
+- `pnpm dev:start:plaid` adds Plaid Sandbox and encryption-key-shape checks,
+  starts or detects ngrok, requires an HTTPS tunnel, and compares its host with
+  `PLAID_WEBHOOK_URL`. A mismatch is reported without rewriting `.env`.
+  Ordinary `dev:start` does not require Plaid or ngrok.
+
+If port 3000 already belongs to this project's server, startup reuses it and
+records it for a safe later `dev:stop`. Use
+`pnpm dev:start -Restart` to request a verified restart. If a stale state
+file remains after a crash, `pnpm dev:stop` revalidates the saved PID and
+process start time before acting; it refuses PID reuse and unrelated Node
+processes. Runtime state and logs live under ignored `.dev-runtime/` and are
+removed on shutdown.
+
 The sign-in page links to an honest recovery-status page, but automated password reset is not configured. It does not use security questions or collect reset information. The planned secure flow uses a single-use, short-lived token delivered to the verified owner email, generic request responses, rate limiting, and invalidation of all existing owner sessions after a successful reset. Until that work is implemented, the installation operator must restore access through the local `owner:create` workflow.
 
 ## Session security
@@ -79,6 +117,10 @@ user-configurable timeout UI. Those are future security scope, not Milestone
 ## Commands
 
 - `pnpm dev` — local development server
+- `pnpm dev:start` — verified normal local startup and `/login` launch
+- `pnpm dev:start:plaid` — verified local startup with Plaid Sandbox/ngrok checks
+- `pnpm dev:doctor` — redacted local-tooling and service diagnostics
+- `pnpm dev:stop` — stop only the verified project server and workflow-owned ngrok
 - `pnpm build` / `pnpm start` — production build and local production server
 - `pnpm lint` — ESLint
 - `pnpm format:check` / `pnpm format` — check or apply formatting

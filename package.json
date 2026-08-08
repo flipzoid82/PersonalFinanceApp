@@ -8,6 +8,10 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:start": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1",
+    "dev:start:plaid": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/start-dev.ps1 -Plaid",
+    "dev:stop": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/stop-dev.ps1",
+    "dev:doctor": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-doctor.ps1",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
