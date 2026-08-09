@@ -74,14 +74,11 @@ try {
 
   if ($state -and $state.NgrokStartedByWorkflow -eq $true -and $state.NgrokPid) {
     $ngrok = Get-Process -Id ([int]$state.NgrokPid) -ErrorAction SilentlyContinue
-    if ($ngrok -and $ngrok.ProcessName -eq "ngrok") {
-      $expectedNgrokStart = [DateTime]::Parse([string]$state.NgrokStartTimeUtc).ToUniversalTime()
-      if ([Math]::Abs(($ngrok.StartTime.ToUniversalTime() - $expectedNgrokStart).TotalSeconds) -le 1) {
-        Stop-Process -Id $ngrok.Id -Force
-        Write-DevCheck PASS "ngrok" "Stopped the ngrok process started by this workflow."
-      } else {
-        Write-DevCheck WARN "ngrok" "Saved PID was reused; ngrok was not stopped."
-      }
+    if (Test-DevSavedProcessOwnership -Process $ngrok -ExpectedProcessId ([int]$state.NgrokPid) -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc ([string]$state.NgrokStartTimeUtc)) {
+      Stop-Process -Id $ngrok.Id -Force
+      Write-DevCheck PASS "ngrok" "Stopped the ngrok process started by this workflow."
+    } elseif ($ngrok) {
+      Write-DevCheck WARN "ngrok" "Saved PID ownership could not be proven; ngrok was not stopped."
     }
   } elseif (Get-Process -Name "ngrok" -ErrorAction SilentlyContinue) {
     Write-DevCheck WARN "ngrok" "An externally started ngrok process is running and was left untouched."
@@ -95,6 +92,7 @@ try {
     Write-DevCheck WARN "Cleanup" "An ignored runtime log is still in use by an external process. State and available logs were removed; stop that process and rerun pnpm dev:stop to remove the remainder."
   }
   Write-DevCheck PASS "PostgreSQL" "Left PostgreSQL running by design."
+  Write-DevCheck PASS "Docker" "Left Docker Desktop and its engine running by design."
 } catch {
   Write-DevCheck FAIL "Stop" $_.Exception.Message
   exit 1

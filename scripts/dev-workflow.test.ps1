@@ -27,6 +27,34 @@ Assert-DevTest (Test-DevProjectNextProcess -ProcessInfo $projectProcess -Project
 Assert-DevTest (-not (Test-DevProjectNextProcess -ProcessInfo $unrelatedProcess -ProjectRoot $projectRoot)) "Rejects unrelated Node process"
 Assert-DevTest (-not (Test-DevProjectNextProcess -ProcessInfo $projectNonNext -ProjectRoot $projectRoot)) "Rejects non-Next project process"
 
+Assert-DevTest ((Get-DevDockerStartupMode -DockerInstalled $true -EngineAvailable $true -DesktopCliSupported $true -DockerDesktopPath "C:\Docker Desktop.exe") -eq "AlreadyRunning") "Docker installed and running needs no launch"
+Assert-DevTest ((Get-DevDockerStartupMode -DockerInstalled $true -EngineAvailable $false -DesktopCliSupported $true -DockerDesktopPath "C:\Docker Desktop.exe") -eq "DesktopCli") "Docker stopped prefers supported Docker Desktop CLI startup"
+Assert-DevTest ((Get-DevDockerStartupMode -DockerInstalled $true -EngineAvailable $false -DesktopCliSupported $false -DockerDesktopPath "C:\Docker Desktop.exe") -eq "LaunchDesktop") "Docker stopped falls back to its executable when CLI startup is unavailable"
+Assert-DevTest ((Get-DevDockerStartupMode -DockerInstalled $true -EngineAvailable $false -DesktopCliSupported $false -DockerDesktopPath $null) -eq "DesktopNotFound") "Docker executable fallback missing has an actionable mode"
+Assert-DevTest ((Get-DevDockerStartupMode -DockerInstalled $false -EngineAvailable $false -DesktopCliSupported $false -DockerDesktopPath $null) -eq "NotInstalled") "Docker not installed is distinguished from a stopped engine"
+Assert-DevTest ((Get-DevDockerCliStartOutcome -DesktopCliSupported $true -ExitCode 0) -eq "Requested") "Accepts successful Docker Desktop CLI start request"
+Assert-DevTest ((Get-DevDockerCliStartOutcome -DesktopCliSupported $true -ExitCode 1) -eq "Failed") "Reports supported Docker Desktop CLI start command failure"
+Assert-DevTest ((Get-DevDockerCliStartOutcome -DesktopCliSupported $false -ExitCode 1) -eq "Unsupported") "Distinguishes unavailable Docker Desktop CLI startup for fallback"
+
+$dockerAttempts = 0
+$dockerLaunchWait = Wait-DevCondition -TimeoutSeconds 1 -PollMilliseconds 0 -Condition {
+  $script:dockerAttempts++
+  $script:dockerAttempts -ge 2
+}
+Assert-DevTest ($dockerLaunchWait.Succeeded -and $dockerLaunchWait.Attempts -eq 2) "Docker auto-launch wait succeeds when the engine becomes ready"
+$dockerTimeoutWait = Wait-DevCondition -TimeoutSeconds 0 -PollMilliseconds 0 -Condition { $false }
+Assert-DevTest (-not $dockerTimeoutWait.Succeeded) "Docker auto-launch wait reports timeout"
+
+Assert-DevTest ((Get-DevNgrokStartupMode -NgrokInstalled $true -NgrokRunning $true) -eq "Reuse") "Reuses an already running ngrok process"
+Assert-DevTest ((Get-DevNgrokStartupMode -NgrokInstalled $true -NgrokRunning $false) -eq "Launch") "Starts ngrok when installed but stopped"
+Assert-DevTest ((Get-DevNgrokStartupMode -NgrokInstalled $false -NgrokRunning $false) -eq "NotInstalled") "Reports ngrok as unavailable without auto-installing"
+
+$ownedStart = [DateTime]::UtcNow.AddMinutes(-1)
+$ownedProcess = [pscustomobject]@{ Id = 4321; ProcessName = "ngrok"; StartTime = $ownedStart }
+Assert-DevTest (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedProcessId 4321 -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc $ownedStart.ToString("o")) "Accepts matching ngrok PID and start time ownership proof"
+Assert-DevTest (-not (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedProcessId 4322 -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc $ownedStart.ToString("o"))) "Rejects unrelated process PID"
+Assert-DevTest (-not (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedProcessId 4321 -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc $ownedStart.AddMinutes(-5).ToString("o"))) "Rejects reused PID with a different start time"
+
 $sensitive = @'
 DATABASE_URL=postgresql://finance:db-password@localhost:5432/app
 PLAID_SECRET=plaid-secret-value
@@ -78,6 +106,12 @@ try {
 } finally {
   if (Test-Path -LiteralPath $temporaryRoot) { Remove-Item -LiteralPath $temporaryRoot -Recurse -Force }
 }
+
+$stopScript = Get-Content -LiteralPath (Join-Path $PSScriptRoot "stop-dev.ps1") -Raw
+Assert-DevTest ($stopScript -notmatch '(?i)Stop-(?:Process|Service).*Docker') "Stop workflow never stops Docker Desktop"
+Assert-DevTest ($stopScript -match 'Test-DevSavedProcessOwnership') "Stop workflow requires ownership proof before stopping ngrok"
+$workflowSource = (Get-Content -LiteralPath (Join-Path $PSScriptRoot "start-dev.ps1") -Raw) + (Get-Content -LiteralPath (Join-Path $PSScriptRoot "dev-workflow.psm1") -Raw)
+Assert-DevTest ($workflowSource -notmatch '(?i)settings-store\.json|settings\.json|Set-Content[^\r\n]*Docker|Win32_(?:Window|Desktop)') "Docker startup does not mutate settings or automate its UI"
 
 if ($failures -gt 0) { throw "$failures developer-workflow test(s) failed." }
 Write-Host "[PASS] Developer workflow helper tests completed." -ForegroundColor Green

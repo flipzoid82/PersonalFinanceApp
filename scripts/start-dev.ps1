@@ -2,7 +2,9 @@
 param(
   [switch]$Plaid,
   [switch]$Restart,
-  [switch]$NoBrowser
+  [switch]$NoBrowser,
+  [ValidateRange(5, 600)][int]$DockerTimeoutSeconds = 120,
+  [ValidateRange(5, 120)][int]$NgrokTimeoutSeconds = 20
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,10 +69,59 @@ try {
   Write-DevCheck PASS "Toolchain" "Node $nodeVersionText and pnpm $pnpmVersionText are available."
 
   $dockerPath = Get-DevCommand -Names @("docker.exe", "docker")
-  if (-not $dockerPath) { throw "Docker is unavailable. Install Docker Desktop and start it before retrying." }
-  $dockerInfo = Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("info")
-  if ($dockerInfo.ExitCode -ne 0) { throw "Docker is installed but the Docker engine is not available. Start Docker Desktop and retry." }
-  Write-DevCheck PASS "Docker" "Docker engine is available."
+  $dockerDesktopPath = Get-DevDockerDesktopPath
+  $dockerInfo = if ($dockerPath) { Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("info") } else { $null }
+  $dockerDesktopCliSupported = $false
+  if ($dockerPath -and $dockerInfo.ExitCode -ne 0) {
+    $dockerDesktopHelp = Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("desktop", "start", "--help")
+    $dockerDesktopCliSupported = $dockerDesktopHelp.ExitCode -eq 0 -and ($dockerDesktopHelp.Output -join "`n") -match '(?m)--detach\b'
+  }
+  $dockerMode = Get-DevDockerStartupMode -DockerInstalled ([bool]$dockerPath) -EngineAvailable ($dockerInfo -and $dockerInfo.ExitCode -eq 0) -DesktopCliSupported $dockerDesktopCliSupported -DockerDesktopPath $dockerDesktopPath
+  switch ($dockerMode) {
+    "NotInstalled" { throw "Docker is unavailable. Install Docker Desktop, then retry; the workflow does not install software." }
+    "DesktopNotFound" { throw "Docker is installed but its engine is unavailable and Docker Desktop could not be found. Start Docker manually, then retry." }
+    "AlreadyRunning" { Write-DevCheck PASS "Docker" "Docker engine is already available." }
+    "DesktopCli" {
+      Write-DevCheck WARN "Docker" "Engine is not running."
+      $dockerStart = Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("desktop", "start", "--detach")
+      $dockerStartOutcome = Get-DevDockerCliStartOutcome -DesktopCliSupported $true -ExitCode $dockerStart.ExitCode
+      if ($dockerStartOutcome -eq "Failed") {
+        throw "Docker Desktop CLI startup failed. Run docker desktop start --detach manually for details, then retry."
+      }
+      Write-DevCheck PASS "Docker" "Docker Desktop start requested through Docker CLI."
+      Write-DevCheck WARN "Docker" "Waiting up to $DockerTimeoutSeconds seconds for the engine."
+      $dockerWait = Wait-DevCondition -TimeoutSeconds $DockerTimeoutSeconds -PollMilliseconds 1000 -Condition {
+        (Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("info")).ExitCode -eq 0
+      }
+      if (-not $dockerWait.Succeeded) {
+        throw "Docker Desktop did not make the engine available within $DockerTimeoutSeconds seconds. Check Docker Desktop diagnostics, start it manually, and retry."
+      }
+      Write-DevCheck PASS "Docker" "Engine became available after $($dockerWait.ElapsedSeconds) seconds."
+    }
+    "LaunchDesktop" {
+      Write-DevCheck WARN "Docker" "Engine is not running."
+      Write-DevCheck WARN "Docker" "Docker Desktop CLI startup is unavailable; using executable fallback."
+      $desktopProcess = Get-Process -Name "Docker Desktop" -ErrorAction SilentlyContinue | Select-Object -First 1
+      if ($desktopProcess) {
+        Write-DevCheck PASS "Docker" "Docker Desktop is already launching; continuing to wait for the engine."
+      } else {
+        try {
+          Start-Process -FilePath $dockerDesktopPath -WindowStyle Hidden | Out-Null
+        } catch {
+          throw "Docker Desktop was found but could not be launched. Start it manually, then retry."
+        }
+        Write-DevCheck PASS "Docker" "Docker Desktop launch requested."
+      }
+      Write-DevCheck WARN "Docker" "Waiting up to $DockerTimeoutSeconds seconds for the engine."
+      $dockerWait = Wait-DevCondition -TimeoutSeconds $DockerTimeoutSeconds -PollMilliseconds 1000 -Condition {
+        (Invoke-DevNativeCommand -FilePath $dockerPath -Arguments @("info")).ExitCode -eq 0
+      }
+      if (-not $dockerWait.Succeeded) {
+        throw "Docker Desktop did not make the engine available within $DockerTimeoutSeconds seconds. Check Docker Desktop diagnostics, start it manually, and retry."
+      }
+      Write-DevCheck PASS "Docker" "Engine became available after $($dockerWait.ElapsedSeconds) seconds."
+    }
+  }
 
   $envPath = Join-Path $projectRoot ".env"
   if (-not (Test-Path -LiteralPath $envPath -PathType Leaf)) {
@@ -86,7 +137,8 @@ try {
     if ($plaidIssues.Count -gt 0) { throw ("Plaid Sandbox configuration is invalid: " + ($plaidIssues -join "; ")) }
     $ngrokPath = Get-DevCommand -Names @("ngrok.exe", "ngrok")
     $existingNgrokProcess = Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $existingNgrokProcess -and -not $ngrokPath) {
+    $ngrokMode = Get-DevNgrokStartupMode -NgrokInstalled ([bool]$ngrokPath) -NgrokRunning ([bool]$existingNgrokProcess)
+    if ($ngrokMode -eq "NotInstalled") {
       throw "ngrok is not installed or not on PATH. Install ngrok, authenticate it manually, and retry pnpm dev:start:plaid."
     }
     Write-DevCheck PASS "Plaid configuration" "Sandbox configuration and encryption-key shape are valid."
@@ -179,15 +231,24 @@ try {
       Remove-Item -LiteralPath $paths.NgrokStdout, $paths.NgrokStderr -Force -ErrorAction SilentlyContinue
       $ngrokProcess = Start-Process -FilePath $ngrokPath -ArgumentList @("http", "3000", "--log=stdout", "--log-format=json") -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $paths.NgrokStdout -RedirectStandardError $paths.NgrokStderr -PassThru
       $state.NgrokStartedByWorkflow = $true
+      Write-DevCheck PASS "ngrok" "Launch requested for a local HTTPS tunnel to port 3000."
     } elseif (-not $preservedNgrok -or $preservedNgrok.Id -ne $ngrokProcess.Id) {
       $state.NgrokStartedByWorkflow = $false
+      Write-DevCheck PASS "ngrok" "Reusing an existing ngrok process without claiming ownership."
+    } else {
+      Write-DevCheck PASS "ngrok" "Reusing the ngrok process previously started by this workflow."
     }
     $state.NgrokPid = $ngrokProcess.Id
     $state.NgrokStartTimeUtc = $ngrokProcess.StartTime.ToUniversalTime().ToString("o")
     Save-DevState -Path $paths.State -State $state
     $tunnel = $null
-    for ($attempt = 0; $attempt -lt 20 -and -not $tunnel; $attempt++) { Start-Sleep -Milliseconds 500; $tunnel = Get-NgrokTunnel }
-    if (-not $tunnel) { throw "ngrok is running but no HTTPS forwarding URL was found at the local ngrok API." }
+    $ngrokWait = Wait-DevCondition -TimeoutSeconds $NgrokTimeoutSeconds -PollMilliseconds 500 -Condition {
+      $script:tunnel = Get-NgrokTunnel
+      $null -ne $script:tunnel
+    }
+    $tunnel = $script:tunnel
+    if (-not $ngrokWait.Succeeded -or -not $tunnel) { throw "ngrok did not expose an HTTPS tunnel through its local API within $NgrokTimeoutSeconds seconds. Check ngrok authentication and retry." }
+    Write-DevCheck PASS "ngrok" "HTTPS forwarding tunnel became available after $($ngrokWait.ElapsedSeconds) seconds."
     $tunnelHost = ([Uri]$tunnel.public_url).Host
     $webhookHost = ([Uri]$environment["PLAID_WEBHOOK_URL"]).Host
     if ($tunnelHost -eq $webhookHost) {
