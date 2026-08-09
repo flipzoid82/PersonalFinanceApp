@@ -144,6 +144,112 @@ function Get-DevCommand {
   return $null
 }
 
+function Get-DevDockerDesktopPath {
+  param([string[]]$CandidatePaths)
+
+  if (-not $CandidatePaths) {
+    $CandidatePaths = @(
+      $(if ($env:ProgramFiles) { Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe" }),
+      $(if (${env:ProgramFiles(x86)}) { Join-Path ${env:ProgramFiles(x86)} "Docker\Docker\Docker Desktop.exe" }),
+      $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "Docker\Docker Desktop.exe" })
+    ) | Where-Object { $_ }
+  }
+
+  foreach ($candidate in $CandidatePaths) {
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+      return [IO.Path]::GetFullPath($candidate)
+    }
+  }
+  return $null
+}
+
+function Get-DevDockerStartupMode {
+  param(
+    [bool]$DockerInstalled,
+    [bool]$EngineAvailable,
+    [bool]$DesktopCliSupported,
+    [AllowNull()][string]$DockerDesktopPath
+  )
+
+  if (-not $DockerInstalled) { return "NotInstalled" }
+  if ($EngineAvailable) { return "AlreadyRunning" }
+  if ($DesktopCliSupported) { return "DesktopCli" }
+  if ([string]::IsNullOrWhiteSpace($DockerDesktopPath)) { return "DesktopNotFound" }
+  return "LaunchDesktop"
+}
+
+function Get-DevDockerCliStartOutcome {
+  param(
+    [bool]$DesktopCliSupported,
+    [int]$ExitCode
+  )
+
+  if (-not $DesktopCliSupported) { return "Unsupported" }
+  if ($ExitCode -eq 0) { return "Requested" }
+  return "Failed"
+}
+
+function Get-DevNgrokStartupMode {
+  param(
+    [bool]$NgrokInstalled,
+    [bool]$NgrokRunning
+  )
+
+  if ($NgrokRunning) { return "Reuse" }
+  if ($NgrokInstalled) { return "Launch" }
+  return "NotInstalled"
+}
+
+function Wait-DevCondition {
+  param(
+    [Parameter(Mandatory = $true)][scriptblock]$Condition,
+    [ValidateRange(0, 3600)][int]$TimeoutSeconds = 120,
+    [ValidateRange(0, 60000)][int]$PollMilliseconds = 1000
+  )
+
+  $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+  $attempts = 0
+  do {
+    $attempts++
+    if (& $Condition) {
+      $stopwatch.Stop()
+      return [pscustomobject]@{
+        Succeeded = $true
+        ElapsedSeconds = [int][Math]::Ceiling($stopwatch.Elapsed.TotalSeconds)
+        Attempts = $attempts
+      }
+    }
+    if ($stopwatch.Elapsed.TotalSeconds -ge $TimeoutSeconds) { break }
+    if ($PollMilliseconds -gt 0) { Start-Sleep -Milliseconds $PollMilliseconds }
+  } while ($true)
+
+  $stopwatch.Stop()
+  return [pscustomobject]@{
+    Succeeded = $false
+    ElapsedSeconds = [int][Math]::Ceiling($stopwatch.Elapsed.TotalSeconds)
+    Attempts = $attempts
+  }
+}
+
+function Test-DevSavedProcessOwnership {
+  param(
+    [AllowNull()]$Process,
+    [int]$ExpectedProcessId,
+    [string]$ExpectedProcessName,
+    [AllowNull()][string]$ExpectedStartTimeUtc
+  )
+
+  if ($null -eq $Process -or $Process.Id -ne $ExpectedProcessId) { return $false }
+  if ($Process.ProcessName -ne $ExpectedProcessName) { return $false }
+  if ([string]::IsNullOrWhiteSpace($ExpectedStartTimeUtc)) { return $false }
+  try {
+    $expected = [DateTime]::Parse($ExpectedStartTimeUtc).ToUniversalTime()
+    return [Math]::Abs(($Process.StartTime.ToUniversalTime() - $expected).TotalSeconds) -le 1
+  } catch {
+    return $false
+  }
+}
+
 function Invoke-DevNativeCommand {
   param(
     [Parameter(Mandatory = $true)][string]$FilePath,
@@ -267,7 +373,8 @@ function Remove-DevRuntimeArtifacts {
 Export-ModuleMember -Function @(
   "Protect-SensitiveText", "Write-DevCheck", "Get-DevProjectRoot", "Get-DevStatePaths",
   "Read-DevEnvFile", "Test-DevCoreConfiguration", "Test-DevPlaidConfiguration",
-  "Get-DevCommand", "Invoke-DevNativeCommand", "Get-DevProcessSnapshot", "Test-DevProjectNextProcess",
+  "Get-DevCommand", "Get-DevDockerDesktopPath", "Get-DevDockerStartupMode", "Get-DevDockerCliStartOutcome", "Get-DevNgrokStartupMode",
+  "Wait-DevCondition", "Test-DevSavedProcessOwnership", "Invoke-DevNativeCommand", "Get-DevProcessSnapshot", "Test-DevProjectNextProcess",
   "Get-DevNextProcessRoot", "Get-DevListeningProcessId", "Test-DevTcpPort",
   "Save-DevState", "Read-DevState", "Remove-DevRuntimeArtifacts"
 )

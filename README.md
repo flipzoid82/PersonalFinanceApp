@@ -34,12 +34,20 @@ pnpm dev:start
 ```
 
 This command verifies Node, pnpm, Docker, dependencies, `.env`, and the owner
-record; starts the PostgreSQL Compose service when needed; waits for database
-health; generates Prisma Client; safely applies checked-in pending migrations;
-starts or reuses only this project's Next.js development server; waits for
-`/login`; and opens `http://localhost:3000/login`. It does not install
-dependencies, reset or seed the database, edit `.env`, or enter owner
-credentials. Login always remains manual.
+record. When Docker is installed but its engine is stopped, it launches Docker
+Desktop and waits for the engine before starting the PostgreSQL Compose
+service. Startup prefers Docker Desktop's supported
+`docker desktop start --detach` command. Older or incompatible Docker
+installations use the Windows executable fallback instead. The workflow never
+edits Docker Desktop settings or internal files. Docker Dashboard visibility
+therefore follows Docker Desktop's own persisted setting; for background
+startup, disable **Open Docker Dashboard when Docker Desktop starts** in Docker
+Desktop. The workflow then waits for database health, generates Prisma Client,
+safely applies checked-in pending migrations, starts or reuses only this
+project's Next.js development server, waits for `/login`, and opens
+`http://localhost:3000/login`. It does not install dependencies, reset or seed
+the database, edit `.env`, or enter owner credentials. Login always remains
+manual.
 
 Use the supporting commands as follows:
 
@@ -48,11 +56,14 @@ Use the supporting commands as follows:
   connection-string passwords.
 - `pnpm dev:stop` stops only a process tree that is verified as this project's
   Next.js server. It also stops ngrok only when this workflow started it,
-  removes ignored runtime state/log files, and leaves PostgreSQL running.
+  removes ignored runtime state/log files, and intentionally leaves both
+  PostgreSQL and Docker Desktop running.
 - `pnpm dev:start:plaid` adds Plaid Sandbox and encryption-key-shape checks,
-  starts or detects ngrok, requires an HTTPS tunnel, and compares its host with
-  `PLAID_WEBHOOK_URL`. A mismatch is reported without rewriting `.env`.
-  Ordinary `dev:start` does not require Plaid or ngrok.
+  automatically starts ngrok when it is installed but stopped, waits for an
+  HTTPS tunnel, and compares its host with `PLAID_WEBHOOK_URL`. A mismatch
+  requires manual `.env` correction; the workflow never rewrites `.env`.
+  Ordinary `dev:start` does not require Plaid or ngrok. `dev:stop` stops ngrok
+  only when its saved PID and start time prove this workflow launched it.
 
 If port 3000 already belongs to this project's server, startup reuses it and
 records it for a safe later `dev:stop`. Use
