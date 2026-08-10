@@ -173,6 +173,29 @@ Do not implement Plaid in this milestone.
 - Support Fidelity positions CSV or statement-derived import
 - Support generic balance snapshot import
 
+## Milestone 11.5: UX/UI Audit and Product Polish
+
+- Audit every owner-facing route and major user journey
+- Replace developer-oriented UI copy with consumer-friendly language
+- Standardize terminology across Overview, Accounts, Transactions, Bills,
+  Calendar, Spending, Investments, Net Worth, Import, and Settings
+- Add contextual help and progressive disclosure where financial concepts
+  require explanation
+- Improve navigation, orientation, detail-return flows, and action discoverability
+- Standardize proven table/list/search/filter/sort interaction patterns
+- Improve form clarity, validation feedback, confirmations, and save/reset behavior
+- Improve empty, no-results, loading, partial, stale, and error states
+- Audit visual hierarchy, information density, long-text handling, and readability
+- Verify every major route at mobile, tablet, and desktop widths
+- Perform full keyboard and accessibility usability testing
+- Verify Light, Dark, and System experiences remain coherent
+- Ensure provider/internal codes are not primary user-facing presentation when
+  readable deterministic labels are available
+- Preserve all existing financial calculations, provider data, overrides,
+  owner scoping, session security, and auditability
+- Document the UX audit, resolved findings, deferred findings, terminology,
+  shared interaction patterns, and known limitations
+
 ## Milestone 12: Production Readiness
 
 - Security review
