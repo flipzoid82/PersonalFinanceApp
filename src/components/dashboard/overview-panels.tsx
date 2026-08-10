@@ -5,6 +5,7 @@ import {
   Prisma,
   TransactionStatus,
 } from "@prisma/client";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import {
   formatCurrency,
@@ -138,7 +139,12 @@ function RecentTransactions({ dashboard }: { dashboard: DashboardViewModel }) {
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-medium">{transaction.name}</p>
+                  <Link
+                    href={`/transactions/${transaction.id}`}
+                    className="truncate font-medium underline-offset-4 hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
+                  >
+                    {transaction.name}
+                  </Link>
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5 text-xs font-semibold",

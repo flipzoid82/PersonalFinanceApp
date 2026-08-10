@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { FinancialRole, Prisma, TransactionStatus } from "@prisma/client";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverviewDashboard } from "./overview-dashboard";
@@ -93,6 +93,33 @@ describe("OverviewDashboard states", () => {
     expect(
       screen.getByRole("link", { name: /Upcoming Bills/ }),
     ).toHaveAttribute("href", "/calendar?view=upcoming&days=14");
+  });
+
+  it("links recent activity to transaction detail", () => {
+    const dashboard = DashboardWithValues();
+    dashboard.recentTransactions = [
+      {
+        id: "transaction-1",
+        name: "Synthetic Coffee",
+        accountName: "Checking",
+        date: new Date("2026-07-20T00:00:00.000Z"),
+        amount: new Prisma.Decimal("12.34"),
+        currency: "USD",
+        status: TransactionStatus.POSTED,
+        category: "Dining",
+        role: FinancialRole.EXPENSE,
+      },
+    ];
+    render(
+      <OverviewDashboard
+        dashboard={dashboard}
+        now={new Date("2026-07-21T12:00:00.000Z")}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "Synthetic Coffee" }),
+    ).toHaveAttribute("href", "/transactions/transaction-1");
   });
 
   it("applies established semantic tones with visible financial labels and signs", () => {

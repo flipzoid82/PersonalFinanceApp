@@ -173,7 +173,45 @@ Investment totals use the latest balance snapshot for each investment account, f
 
 Money calculations remain in Prisma `Decimal` until final locale-aware formatting. Dashboard calendar boundaries currently use UTC because the owner profile has no time-zone field. Aggregate demo totals assume the seeded USD currency; individual account and transaction rows retain their own currency labels. Sources become stale after seven days without a relevant update.
 
-Bills, Spending, and Settings remain placeholders. The Transactions route remains read-only and intentionally does not include Milestone 8 editing, search, or filters. There is no importing, performance analysis, or production integration.
+Bills, Spending, and Settings remain placeholders. Milestone 8 replaces the
+read-only Transactions surface with an owner-scoped ledger: URL-backed search,
+UTC date/current-account/effective-category/exact-amount/status filters,
+50-row server pagination, transaction detail, and local category, financial
+role, notes, and report-exclusion corrections. Provider values remain
+read-only. There is no importing, performance analysis, or production
+integration.
+
+## Milestone 8 transaction ledger
+
+Open `/transactions` after signing in. Search matches the original description,
+provider merchant, and existing local merchant correction without changing
+source data. Amount bounds compare the absolute stored transaction magnitude as
+exact `Decimal` values; dates use posting date when present and otherwise the
+authorization date, with explicit UTC day boundaries. The account selector
+contains current owner accounts only. Retained activity belonging to a
+disconnected historical account remains visible in unfiltered history with a
+clear historical label, but cannot be selected as a current account filter.
+
+Each ledger row links to `/transactions/[transactionId]`. Detail separates
+effective owner-facing values from read-only source values and shows relevant
+pending-to-posted history without exposing raw provider payloads or internal
+provider identifiers. Local category, financial-role, notes, and
+report-exclusion values are stored in `TransactionOverride`; clearing those
+editable values restores provider-derived behavior while retaining unrelated
+merchant and linked-transaction metadata. A successful correction refreshes
+Overview and Calendar projections. Plaid sync remains authoritative for source
+fields and does not replace the separate local override row.
+
+Transaction amounts are shown as absolute magnitudes, preserving the app's
+existing provider-neutral convention. Effective financial roles supply
+inflow/outflow and reporting meaning:
+transfers and credit-card payments remain visible but are explicitly labeled as
+not income/spending, pending activity stays outside finalized totals, and report
+exclusion only affects calculations that already honor it. Semantic colors are
+paired with status, role, inflow/outflow, and exclusion text in both light and
+dark rendering. See
+[the Milestone 8 architecture note](docs/architecture-milestone-8.md) for the
+complete query, security, reconciliation, and override boundaries.
 
 ## Milestone 4 calendar and recurring events
 
@@ -365,12 +403,13 @@ these values.
 
 ## Current status
 
-Milestone 7 includes owner-scoped recurring detection, confidence scoring,
-inferred-stream upsert, bounded Calendar projection, posted-only matching, and
-Plaid sync/webhook triggering. Milestones 1–6 remain intact.
+Milestone 8 includes the owner-scoped transaction ledger, bounded server-side
+search/filtering, detail, and local corrections. Milestone 7 recurring
+detection, Calendar projection/matching, Plaid sync/webhook behavior, and all
+earlier milestones remain intact.
 
 No real-institution or Plaid Production integration, automatic Fidelity sync,
-CSV/PDF parsing, import UI, Milestone 8 transaction management, full Bills or
+CSV/PDF parsing, import UI, Milestone 9 spending analytics, full Bills or
 Spending product, bill payment, investment performance analysis, theme
 selector, multi-user feature, or production deployment exists. See
 `docs/Plan Docs/build-plan.md` for the future sequence.

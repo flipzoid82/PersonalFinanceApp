@@ -1,41 +1,35 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { currentAccountWhere } from "@/lib/accounts/current";
 
 const mocks = vi.hoisted(() => ({
-  findMany: vi.fn(),
   requireUser: vi.fn(),
+  getTransactionLedger: vi.fn(),
 }));
 
-vi.mock("@/lib/auth", () => ({
-  requireUser: mocks.requireUser,
-}));
-
-vi.mock("@/lib/db", () => ({
-  db: {
-    transaction: {
-      findMany: mocks.findMany,
-    },
-  },
+vi.mock("@/lib/auth", () => ({ requireUser: mocks.requireUser }));
+vi.mock("@/lib/transactions/queries", () => ({
+  getTransactionLedger: mocks.getTransactionLedger,
 }));
 
 import TransactionsPage from "./page";
 
 describe("TransactionsPage", () => {
   beforeEach(() => {
-    mocks.findMany.mockReset().mockResolvedValue([]);
-    mocks.requireUser.mockReset().mockResolvedValue({ id: "owner-1" });
+    vi.clearAllMocks();
+    mocks.requireUser.mockResolvedValue({ id: "owner-1" });
+    mocks.getTransactionLedger.mockResolvedValue({ transactions: [] });
   });
 
-  it("excludes transactions owned only by disconnected Plaid history", async () => {
-    await TransactionsPage();
+  it("requires the authenticated owner and forwards URL filters", async () => {
+    const searchParams = Promise.resolve({
+      search: "coffee",
+      status: "POSTED",
+    });
+    await TransactionsPage({ searchParams });
 
-    expect(mocks.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          userId: "owner-1",
-          account: currentAccountWhere("owner-1"),
-        },
-      }),
-    );
+    expect(mocks.requireUser).toHaveBeenCalledOnce();
+    expect(mocks.getTransactionLedger).toHaveBeenCalledWith("owner-1", {
+      search: "coffee",
+      status: "POSTED",
+    });
   });
 });
