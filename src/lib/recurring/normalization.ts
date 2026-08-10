@@ -7,6 +7,7 @@ import type {
   DetectionTransaction,
   EffectiveDetectionTransaction,
 } from "./types";
+import { effectiveTransactionValues } from "@/lib/transactions/effective";
 
 const GENERIC_IDENTITIES = new Set([
   "ach",
@@ -131,17 +132,14 @@ export function effectiveDetectionTransaction(
   )
     return null;
 
+  const effective = effectiveTransactionValues(transaction);
   const financialRole =
-    transaction.override?.financialRoleOverride ??
-    providerRole(transaction.providerCategory);
+    effective.financialRole ?? providerRole(transaction.providerCategory);
   if (!financialRole) return null;
   const kinds = recurringKinds(financialRole, transaction.providerCategory);
   if (!kinds) return null;
 
-  const effectiveMerchant =
-    transaction.override?.merchantNameOverride ??
-    transaction.merchantName ??
-    transaction.originalName;
+  const effectiveMerchant = effective.merchant;
   const normalizedMerchant = normalizeCounterparty(effectiveMerchant);
   if (
     !normalizedMerchant ||
@@ -155,7 +153,7 @@ export function effectiveDetectionTransaction(
     effectiveMerchant: effectiveMerchant.trim(),
     normalizedMerchant,
     effectiveCategory:
-      transaction.override?.categoryOverride ?? transaction.providerCategory,
+      effective.category === "Uncategorized" ? null : effective.category,
     financialRole,
     ...kinds,
   };

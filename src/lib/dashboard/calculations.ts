@@ -16,6 +16,7 @@ import {
   startOfUtcMonth,
 } from "./dates";
 import { deriveDashboardState } from "./state";
+import { effectiveTransactionValues } from "@/lib/transactions/effective";
 import type {
   DashboardAccount,
   DashboardCalendarEvent,
@@ -74,17 +75,12 @@ function accountFreshness(account: DashboardAccount) {
 function effectiveTransaction(
   transaction: RawDashboardData["transactions"][number],
 ) {
+  const effective = effectiveTransactionValues(transaction);
   return {
-    name:
-      transaction.override?.merchantNameOverride ??
-      transaction.merchantName ??
-      transaction.originalName,
-    category:
-      transaction.override?.categoryOverride ??
-      transaction.providerCategory ??
-      "Uncategorized",
-    role: transaction.override?.financialRoleOverride ?? null,
-    excluded: transaction.override?.excludedFromReports ?? false,
+    name: effective.merchant,
+    category: effective.category,
+    role: effective.financialRole,
+    excluded: effective.excludedFromReports,
   };
 }
 

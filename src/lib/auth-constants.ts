@@ -8,6 +8,7 @@ export const DASHBOARD_ROUTES = [
   "/net-worth",
   "/calendar",
   "/transactions",
+  "/transactions/[transactionId]",
   "/bills",
   "/spending",
   "/settings",
