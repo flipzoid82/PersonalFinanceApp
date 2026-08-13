@@ -7,6 +7,7 @@ import {
 import { ManualAccountForm } from "@/components/portfolio/manual-account-form";
 import { PortfolioSummary } from "@/components/portfolio/portfolio-summary";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { requireUser } from "@/lib/auth";
 import { fidelityTemplate } from "@/lib/portfolio";
 import { getPortfolioViewModel } from "@/lib/portfolio/server";
@@ -60,13 +61,10 @@ export default async function InvestmentsPage({
           <FidelityTemplateLinks selected={template?.id} />
         </div>
         {template ? (
-          <p
-            role="status"
-            className="mt-4 rounded-lg border border-[var(--semantic-info-border)] bg-[var(--semantic-info-bg)] p-3 text-sm text-[var(--semantic-info-text)]"
-          >
+          <Notice tone="info" role="status" className="mt-4">
             {template.label} metadata is prefilled below and remains editable.
             No credentials or connection are involved.
-          </p>
+          </Notice>
         ) : null}
         <div className="mt-5">
           <ManualAccountForm

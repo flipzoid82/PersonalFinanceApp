@@ -71,9 +71,13 @@ describe("OverviewDashboard states", () => {
       "order-8",
       "xl:order-4",
     );
-    expect(container.querySelector("[role='status']")).toHaveTextContent(
-      "Partial totals",
+    const notice = container.querySelector("[role='status']");
+    expect(notice).toHaveTextContent("Partial totals");
+    expect(notice).toHaveClass(
+      "bg-[var(--semantic-warning-bg)]",
+      "text-[var(--semantic-warning-text)]",
     );
+    expect(notice).not.toHaveClass("bg-amber-50", "text-amber-950");
   });
 
   it("links monthly metrics to their intended destinations", () => {

@@ -5,6 +5,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { SemanticBadge, SemanticValue } from "@/components/ui/semantic";
 import { formatCurrency } from "@/lib/dashboard/formatters";
 import type { PortfolioViewModel } from "@/lib/portfolio";
@@ -60,16 +61,15 @@ export function PortfolioSummary({
   return (
     <>
       {portfolio.isPartial ? (
-        <div
+        <Notice
+          tone="warning"
+          title="Partial values"
+          icon={AlertTriangle}
           role="status"
-          className="mt-5 flex gap-3 rounded-xl border border-[var(--semantic-warning-border)] bg-[var(--semantic-warning-bg)] p-4 text-sm text-[var(--semantic-warning-text)]"
+          className="mt-5"
         >
-          <AlertTriangle className="size-5 shrink-0" aria-hidden="true" />
-          <div>
-            <p className="font-semibold">Partial values</p>
-            <p className="mt-1">{portfolio.partialReasons.join(" ")}</p>
-          </div>
-        </div>
+          {portfolio.partialReasons.join(" ")}
+        </Notice>
       ) : null}
       <section
         aria-label="Portfolio totals"

@@ -6,6 +6,7 @@ import { getPlaidConnections } from "@/lib/plaid/queries";
 import { plaidStatusPresentation } from "@/lib/plaid/status";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { SemanticBadge } from "@/components/ui/semantic";
 import { DisconnectPlaidDialog } from "./disconnect-dialog";
 import { PlaidLinkButton } from "./plaid-link-button";
@@ -112,9 +113,9 @@ export async function PlaidConnectionManager({
                         </div>
                       </dl>
                       {connection.lastErrorMessage ? (
-                        <p className="mt-3 text-sm text-[var(--semantic-negative-text)]">
+                        <Notice tone="negative" className="mt-3">
                           {connection.lastErrorMessage}
-                        </p>
+                        </Notice>
                       ) : null}
                     </div>
                     {!disconnected ? (

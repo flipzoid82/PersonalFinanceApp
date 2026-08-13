@@ -6,6 +6,11 @@ import {
 } from "@/actions/calendar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  themedFormControlClass,
+  themedFormPanelClass,
+} from "@/components/ui/form-controls";
+import { semanticToneClasses } from "@/components/ui/semantic";
 import type { EffectiveCalendarEvent, MatchCandidate } from "@/lib/calendar";
 import { formatIsoDate } from "@/lib/calendar";
 import {
@@ -14,9 +19,6 @@ import {
   titleCaseEnum,
 } from "@/lib/dashboard/formatters";
 import { ConfidenceBadge, StatusBadge, TextBadge } from "./event-badges";
-
-const inputClass =
-  "mt-1 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-slate-900";
 
 function HiddenFields({
   event,
@@ -49,7 +51,7 @@ export function EventDetails({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-bold">{event.title}</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             {titleCaseEnum(event.eventType)} · {formatDate(event.effectiveDate)}
           </p>
         </div>
@@ -63,34 +65,44 @@ export function EventDetails({
 
       <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <dt className="font-semibold text-slate-600">Expected amount</dt>
+          <dt className="font-semibold text-[var(--text-secondary)]">
+            Expected amount
+          </dt>
           <dd>
             {formatCurrency(event.expectedAmount, event.currency)} ·{" "}
             {event.amountLabel}
           </dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-600">Account</dt>
+          <dt className="font-semibold text-[var(--text-secondary)]">
+            Account
+          </dt>
           <dd>{event.accountName ?? "No account selected"}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-600">Frequency</dt>
+          <dt className="font-semibold text-[var(--text-secondary)]">
+            Frequency
+          </dt>
           <dd>{titleCaseEnum(event.frequency)}</dd>
         </div>
         <div>
-          <dt className="font-semibold text-slate-600">Date source</dt>
+          <dt className="font-semibold text-[var(--text-secondary)]">
+            Date source
+          </dt>
           <dd>
             {event.dateLabel}; source {event.dateSourceLabel}
           </dd>
         </div>
         {event.actualAmount ? (
           <div>
-            <dt className="font-semibold text-slate-600">Actual paid amount</dt>
+            <dt className="font-semibold text-[var(--text-secondary)]">
+              Actual paid amount
+            </dt>
             <dd>{formatCurrency(event.actualAmount, event.currency)}</dd>
           </div>
         ) : null}
         <div>
-          <dt className="font-semibold text-slate-600">
+          <dt className="font-semibold text-[var(--text-secondary)]">
             Last matching transaction
           </dt>
           <dd>
@@ -101,7 +113,7 @@ export function EventDetails({
         </div>
         {event.dateLabel === "Confirmed" && event.predictedPostingDate ? (
           <div>
-            <dt className="font-semibold text-slate-600">
+            <dt className="font-semibold text-[var(--text-secondary)]">
               Predicted posting date
             </dt>
             <dd>
@@ -111,17 +123,19 @@ export function EventDetails({
           </div>
         ) : null}
         <div className="sm:col-span-2 lg:col-span-3">
-          <dt className="font-semibold text-slate-600">Notes</dt>
+          <dt className="font-semibold text-[var(--text-secondary)]">Notes</dt>
           <dd>{event.notes || "No notes"}</dd>
         </div>
       </dl>
 
       {candidate && canEdit ? (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+        <div
+          className={`mt-4 rounded-lg border p-3 text-sm ${semanticToneClasses.warning}`}
+        >
           <p className="font-semibold">
             Suggested posted match · {candidate.confidence} confidence
           </p>
-          <p className="mt-1 text-slate-700">
+          <p className="mt-1">
             {candidate.transaction.merchantName ??
               candidate.transaction.originalName}{" "}
             ·{" "}
@@ -131,7 +145,7 @@ export function EventDetails({
               ? formatDate(candidate.transaction.postedAt)
               : "Date unavailable"}
           </p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="mt-1 text-xs">
             Match evidence: {candidate.reasons.join(", ")}. Pending transactions
             are never candidates.
           </p>
@@ -157,7 +171,7 @@ export function EventDetails({
       ) : null}
 
       {canEdit ? (
-        <details className="mt-4 rounded-lg border p-3">
+        <details className="mt-4 rounded-lg border border-[var(--border-default)] p-3">
           <summary className="cursor-pointer font-semibold">
             Actions and corrections
           </summary>
@@ -165,14 +179,14 @@ export function EventDetails({
             {event.dateLabel === "Predicted" ? (
               <form
                 action={updateCalendarEventAction}
-                className="rounded-lg bg-slate-50 p-3"
+                className={`${themedFormPanelClass} p-3`}
               >
                 <HiddenFields event={event} returnTo={returnTo} />
                 <input type="hidden" name="intent" value="confirm" />
                 <label className="block text-sm font-semibold">
                   Confirmed due date
                   <input
-                    className={inputClass}
+                    className={themedFormControlClass}
                     type="date"
                     name="date"
                     required
@@ -186,14 +200,14 @@ export function EventDetails({
             ) : null}
             <form
               action={updateCalendarEventAction}
-              className="rounded-lg bg-slate-50 p-3"
+              className={`${themedFormPanelClass} p-3`}
             >
               <HiddenFields event={event} returnTo={returnTo} />
               <input type="hidden" name="intent" value="correct-date" />
               <label className="block text-sm font-semibold">
                 Correct confirmed due date
                 <input
-                  className={inputClass}
+                  className={themedFormControlClass}
                   type="date"
                   name="date"
                   required
@@ -206,14 +220,14 @@ export function EventDetails({
             </form>
             <form
               action={updateCalendarEventAction}
-              className="rounded-lg bg-slate-50 p-3"
+              className={`${themedFormPanelClass} p-3`}
             >
               <HiddenFields event={event} returnTo={returnTo} />
               <input type="hidden" name="intent" value="correct-amount" />
               <label className="block text-sm font-semibold">
                 Correct expected amount
                 <input
-                  className={inputClass}
+                  className={themedFormControlClass}
                   type="number"
                   name="amount"
                   min="0.0001"
@@ -228,14 +242,14 @@ export function EventDetails({
             </form>
             <form
               action={updateCalendarEventAction}
-              className="rounded-lg bg-slate-50 p-3"
+              className={`${themedFormPanelClass} p-3`}
             >
               <HiddenFields event={event} returnTo={returnTo} />
               <input type="hidden" name="intent" value="correct-frequency" />
               <label className="block text-sm font-semibold">
                 Correct frequency
                 <select
-                  className={inputClass}
+                  className={themedFormControlClass}
                   name="frequency"
                   defaultValue={event.frequency}
                 >
@@ -252,14 +266,14 @@ export function EventDetails({
             </form>
             <form
               action={updateCalendarEventAction}
-              className="rounded-lg bg-slate-50 p-3 lg:col-span-2"
+              className={`${themedFormPanelClass} p-3 lg:col-span-2`}
             >
               <HiddenFields event={event} returnTo={returnTo} />
               <input type="hidden" name="intent" value="notes" />
               <label className="block text-sm font-semibold">
                 Notes
                 <textarea
-                  className={`${inputClass} min-h-24 py-2`}
+                  className={`${themedFormControlClass} min-h-24 py-2`}
                   name="notes"
                   maxLength={1000}
                   defaultValue={event.notes ?? ""}

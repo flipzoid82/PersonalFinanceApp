@@ -47,6 +47,8 @@ export async function getCalendarData(
               id: true,
               userId: true,
               name: true,
+              isActive: true,
+              institutionConnection: { select: { status: true } },
               dataSource: {
                 select: { status: true, lastUpdatedAt: true },
               },

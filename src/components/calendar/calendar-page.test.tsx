@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -7,6 +7,8 @@ import CalendarError from "@/app/(dashboard)/error";
 import CalendarLoading from "@/app/(dashboard)/calendar/loading";
 import { CalendarPage } from "./calendar-page";
 import type { CalendarViewModel } from "@/lib/calendar";
+
+afterEach(cleanup);
 
 const now = new Date("2026-07-21T12:00:00.000Z");
 
@@ -104,6 +106,49 @@ describe("Calendar page states and structure", () => {
       />,
     );
     expect(screen.getByRole("status")).toHaveTextContent("Due date corrected.");
+    expect(screen.getByRole("status")).toHaveClass(
+      "bg-[var(--semantic-positive-bg)]",
+      "text-[var(--semantic-positive-text)]",
+    );
     expect(screen.getByRole("alert")).toHaveTextContent("Amount is invalid.");
+    expect(screen.getByRole("alert")).toHaveClass(
+      "bg-[var(--semantic-negative-bg)]",
+      "text-[var(--semantic-negative-text)]",
+    );
+  });
+
+  it("uses shared warning tokens for the Calendar data notice", () => {
+    render(
+      <CalendarPage
+        model={model({
+          state: {
+            ...model().state,
+            stateMessages: [
+              "Some calendar sources have not been updated in seven days.",
+              "A calendar source needs attention, so results may be partial.",
+            ],
+          },
+        })}
+        now={now}
+        returnTo="/calendar"
+      />,
+    );
+
+    const notice = screen.getByRole("status");
+    expect(notice).toHaveClass(
+      "border-[var(--semantic-warning-border)]",
+      "bg-[var(--semantic-warning-bg)]",
+      "text-[var(--semantic-warning-text)]",
+    );
+    expect(notice).not.toHaveClass(
+      "border-amber-200",
+      "bg-amber-50",
+      "text-amber-900",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Calendar data notice" }),
+    ).toBeVisible();
+    expect(screen.getByText(/not been updated in seven days/i)).toBeVisible();
+    expect(screen.getByText(/results may be partial/i)).toBeVisible();
   });
 });
