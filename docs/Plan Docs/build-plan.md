@@ -173,7 +173,7 @@ Do not implement Plaid in this milestone.
 - Support Fidelity positions CSV or statement-derived import
 - Support generic balance snapshot import
 
-## Milestone 11.5: UX/UI Audit and Product Polish
+## Milestone 11.5: UX/UI Audit, Branding, and Product Polish
 
 - Audit every owner-facing route and major user journey
 - Replace developer-oriented UI copy with consumer-friendly language
