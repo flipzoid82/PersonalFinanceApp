@@ -2,12 +2,10 @@ import { CalendarEventType, RecurringFrequency } from "@prisma/client";
 import { createManualRecurringEventAction } from "@/actions/calendar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { themedFormControlClass } from "@/components/ui/form-controls";
 import type { CalendarViewModel } from "@/lib/calendar";
 import { formatIsoDate } from "@/lib/calendar";
 import { titleCaseEnum } from "@/lib/dashboard/formatters";
-
-const field =
-  "mt-1 min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1";
 
 export function ManualEventForm({
   model,
@@ -24,7 +22,7 @@ export function ManualEventForm({
         <summary className="cursor-pointer text-lg font-bold">
           Add manual recurring event
         </summary>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
           Creates one manual occurrence and its recurring stream. It does not
           generate future events.
         </p>
@@ -35,12 +33,17 @@ export function ManualEventForm({
           <input type="hidden" name="returnTo" value={returnTo} />
           <label className="text-sm font-semibold">
             Name
-            <input className={field} name="name" required maxLength={120} />
+            <input
+              className={themedFormControlClass}
+              name="name"
+              required
+              maxLength={120}
+            />
           </label>
           <label className="text-sm font-semibold">
             Event type
             <select
-              className={field}
+              className={themedFormControlClass}
               name="eventType"
               defaultValue={CalendarEventType.BILL}
             >
@@ -54,7 +57,7 @@ export function ManualEventForm({
           <label className="text-sm font-semibold">
             Date
             <input
-              className={field}
+              className={themedFormControlClass}
               type="date"
               name="date"
               required
@@ -64,7 +67,7 @@ export function ManualEventForm({
           <label className="text-sm font-semibold">
             Expected amount
             <input
-              className={field}
+              className={themedFormControlClass}
               type="number"
               name="amount"
               required
@@ -75,7 +78,7 @@ export function ManualEventForm({
           <label className="text-sm font-semibold">
             Currency
             <input
-              className={field}
+              className={themedFormControlClass}
               name="currency"
               required
               minLength={3}
@@ -85,7 +88,11 @@ export function ManualEventForm({
           </label>
           <label className="text-sm font-semibold">
             Account (optional)
-            <select className={field} name="accountId" defaultValue="">
+            <select
+              className={themedFormControlClass}
+              name="accountId"
+              defaultValue=""
+            >
               <option value="">No account</option>
               {model.accounts.map((account) => (
                 <option key={account.id} value={account.id}>
@@ -97,7 +104,7 @@ export function ManualEventForm({
           <label className="text-sm font-semibold">
             Frequency
             <select
-              className={field}
+              className={themedFormControlClass}
               name="frequency"
               defaultValue={RecurringFrequency.MONTHLY}
             >
@@ -129,7 +136,7 @@ export function ManualEventForm({
           <label className="text-sm font-semibold sm:col-span-2">
             Notes (optional)
             <textarea
-              className={`${field} min-h-24 py-2`}
+              className={`${themedFormControlClass} min-h-24 py-2`}
               name="notes"
               maxLength={1000}
             />

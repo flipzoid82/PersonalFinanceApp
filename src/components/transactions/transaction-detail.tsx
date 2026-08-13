@@ -3,6 +3,7 @@ import Link from "next/link";
 import { updateTransactionOverrideAction } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { SemanticBadge, SemanticValue } from "@/components/ui/semantic";
 import {
   formatCurrency,
@@ -112,20 +113,14 @@ export function TransactionDetail({
       </div>
 
       {message ? (
-        <p
-          role="status"
-          className="mt-5 rounded-lg border border-[var(--semantic-positive-border)] bg-[var(--semantic-positive-bg)] p-3 text-[var(--semantic-positive-text)]"
-        >
+        <Notice tone="positive" role="status" className="mt-5">
           {message}
-        </p>
+        </Notice>
       ) : null}
       {error ? (
-        <p
-          role="alert"
-          className="mt-5 rounded-lg border border-[var(--semantic-negative-border)] bg-[var(--semantic-negative-bg)] p-3 text-[var(--semantic-negative-text)]"
-        >
+        <Notice tone="negative" role="alert" className="mt-5">
           {error}
-        </p>
+        </Notice>
       ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">

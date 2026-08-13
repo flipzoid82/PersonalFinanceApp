@@ -2,6 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import { MetricCard } from "./metric-card";
 import { OverviewPanels } from "./overview-panels";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import {
   formatCurrency,
   formatDate,
@@ -138,19 +139,15 @@ export function OverviewDashboard({
       </header>
 
       {dashboard.isPartial ? (
-        <div
+        <Notice
+          tone="warning"
+          title="Partial totals"
+          icon={AlertTriangle}
           role="status"
-          className="mt-5 flex gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"
+          className="mt-5"
         >
-          <AlertTriangle
-            className="mt-0.5 size-5 shrink-0"
-            aria-hidden="true"
-          />
-          <div>
-            <p className="font-semibold">Partial totals</p>
-            <p className="mt-1">{dashboard.partialReasons.join(" ")}</p>
-          </div>
-        </div>
+          {dashboard.partialReasons.join(" ")}
+        </Notice>
       ) : null}
 
       <section aria-labelledby="metrics-title" className="mt-8">

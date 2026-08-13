@@ -177,4 +177,25 @@ describe("TransactionLedger", () => {
     );
     expect(screen.getByText("No transactions match")).toBeVisible();
   });
+
+  it("renders an unavailable account filter as a non-disruptive warning status", () => {
+    render(
+      <TransactionLedger
+        ledger={
+          {
+            ...(ledger() as unknown as Record<string, unknown>),
+            selectedAccountUnavailable: true,
+          } as never
+        }
+      />,
+    );
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "selected account is unavailable",
+    );
+    expect(screen.getByRole("status")).toHaveClass(
+      "bg-[var(--semantic-warning-bg)]",
+    );
+  });
 });

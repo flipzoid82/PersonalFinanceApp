@@ -86,6 +86,10 @@ export type RawCalendarEvent = {
     id: string;
     userId: string;
     name: string;
+    isActive?: boolean;
+    institutionConnection?: {
+      status: import("@prisma/client").ConnectionStatus;
+    } | null;
     dataSource: {
       status: DataSourceStatus;
       lastUpdatedAt: Date | null;

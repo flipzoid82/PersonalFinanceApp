@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/login-form";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -29,12 +30,9 @@ export default async function LoginPage(
           Sign in with the owner account configured for this application.
         </p>
         {reason === "expired" ? (
-          <p
-            role="status"
-            className="mb-5 rounded-lg border border-[var(--semantic-warning-border)] bg-[var(--semantic-warning-bg)] p-3 text-sm font-medium text-[var(--semantic-warning-text)]"
-          >
+          <Notice tone="warning" role="status" className="mb-5">
             Your session expired for your security. Please sign in again.
-          </p>
+          </Notice>
         ) : null}
         <LoginForm />
         <p className="mt-5 text-center text-sm">

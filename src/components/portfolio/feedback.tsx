@@ -7,18 +7,14 @@ export function PortfolioFeedback({
 }) {
   if (!message && !error) return null;
   return (
-    <div
+    <Notice
+      tone={error ? "negative" : "positive"}
+      title={error ? "Update failed" : "Update saved"}
       role={error ? "alert" : "status"}
-      className={
-        error
-          ? "mt-5 rounded-xl border border-[var(--semantic-negative-border)] bg-[var(--semantic-negative-bg)] p-4 text-sm text-[var(--semantic-negative-text)]"
-          : "mt-5 rounded-xl border border-[var(--semantic-positive-border)] bg-[var(--semantic-positive-bg)] p-4 text-sm text-[var(--semantic-positive-text)]"
-      }
+      className="mt-5"
     >
-      <p className="font-semibold">
-        {error ? "Update failed" : "Update saved"}
-      </p>
-      <p className="mt-1">{error ?? message}</p>
-    </div>
+      {error ?? message}
+    </Notice>
   );
 }
+import { Notice } from "@/components/ui/notice";

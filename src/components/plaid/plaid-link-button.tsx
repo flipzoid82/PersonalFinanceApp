@@ -6,6 +6,7 @@ import {
   type PlaidLinkOnSuccessMetadata,
 } from "react-plaid-link";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 
 export function PlaidLinkButton({
   mode = "connect",
@@ -128,12 +129,9 @@ export function PlaidLinkButton({
             : "Connect Sandbox institution"}
       </Button>
       {errorMessage ? (
-        <p
-          role="alert"
-          className="mt-2 text-sm text-[var(--semantic-negative-text)]"
-        >
+        <Notice tone="negative" role="alert" className="mt-2">
           {errorMessage}
-        </p>
+        </Notice>
       ) : null}
     </div>
   );

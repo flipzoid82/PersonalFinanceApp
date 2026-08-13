@@ -6,6 +6,7 @@ import {
 import Link from "next/link";
 import { ActiveTransactionSearch } from "@/components/transactions/active-transaction-search";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import {
   SemanticBadge,
   SemanticValue,
@@ -296,13 +297,10 @@ export function TransactionLedger({ ledger }: { ledger: LedgerModel }) {
     <>
       <FilterForm ledger={ledger} />
       {ledger.selectedAccountUnavailable ? (
-        <p
-          role="alert"
-          className="mt-4 text-sm text-[var(--semantic-warning-text)]"
-        >
+        <Notice tone="warning" role="status" className="mt-4">
           The selected account is unavailable for this owner or is no longer a
           current account. Clear the account filter to continue.
-        </p>
+        </Notice>
       ) : null}
       {!ledger.transactions.length ? (
         <Card className="mt-6 p-6">

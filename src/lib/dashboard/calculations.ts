@@ -112,7 +112,7 @@ function currentInvestmentAccounts(
     });
 }
 
-function calculateMonthlyActivity(data: RawDashboardData, now: Date) {
+export function calculateMonthlyActivity(data: RawDashboardData, now: Date) {
   const monthStart = startOfUtcMonth(now);
   const nextMonth = startOfNextUtcMonth(now);
   let income = ZERO;

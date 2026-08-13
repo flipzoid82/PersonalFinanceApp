@@ -59,6 +59,7 @@ export async function getDashboardData(
     db.transaction.findMany({
       where: {
         userId: ownerId,
+        removedAt: null,
         status: { in: [TransactionStatus.POSTED, TransactionStatus.PENDING] },
         OR: [
           { postedAt: { gte: queryStart, lt: startOfNextUtcMonth(now) } },

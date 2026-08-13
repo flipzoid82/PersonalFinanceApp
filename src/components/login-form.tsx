@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { login } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(login, {});
@@ -42,9 +43,9 @@ export function LoginForm() {
         />
       </div>
       {state.error ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
+        <Notice tone="negative" role="alert">
           {state.error}
-        </p>
+        </Notice>
       ) : null}
       <Button type="submit" disabled={pending} className="w-full">
         {pending ? "Signing in…" : "Sign in"}

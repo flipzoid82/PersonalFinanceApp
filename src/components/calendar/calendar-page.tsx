@@ -1,5 +1,6 @@
 import { refreshRecurringDetectionAction } from "@/actions/recurring";
 import { Card } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import type { CalendarViewModel } from "@/lib/calendar";
 import { CalendarControls } from "./calendar-controls";
 import { ManualEventForm } from "./manual-event-form";
@@ -44,31 +45,23 @@ export function CalendarPage({
         contractual due dates, and predicted-only items never become overdue.
       </p>
       {message ? (
-        <div
-          role="status"
-          tabIndex={-1}
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900"
-        >
+        <Notice tone="positive" role="status" tabIndex={-1}>
           {message}
-        </div>
+        </Notice>
       ) : null}
       {error ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-900"
-        >
+        <Notice tone="negative" role="alert">
           {error}
-        </div>
+        </Notice>
       ) : null}
       {model.state.stateMessages.length ? (
-        <Card className="border-amber-200 bg-amber-50 p-4" role="status">
-          <h2 className="font-bold">Calendar data notice</h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+        <Notice tone="warning" title="Calendar data notice" role="status">
+          <ul className="list-disc space-y-1 pl-5">
             {model.state.stateMessages.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
-        </Card>
+        </Notice>
       ) : null}
       {model.state.isEmpty ? (
         <Card className="p-8 text-center">
