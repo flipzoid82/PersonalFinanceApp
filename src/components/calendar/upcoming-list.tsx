@@ -15,7 +15,7 @@ export function UpcomingList({
         <h2 id="upcoming-heading" className="text-xl font-bold">
           Upcoming {model.filters.days}-day list
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-[var(--text-secondary)]">
           Chronological confirmed and predicted occurrences. Inactive and
           skipped items are excluded.
         </p>
@@ -35,7 +35,7 @@ export function UpcomingList({
       ) : (
         <Card className="p-8 text-center">
           <h3 className="font-bold">No events in this range</h3>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Try a longer range or clear one of the filters.
           </p>
         </Card>

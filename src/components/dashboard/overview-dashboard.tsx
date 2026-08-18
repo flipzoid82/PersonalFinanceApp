@@ -24,13 +24,13 @@ export function OverviewDashboard({
         <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
         <Card className="mt-8 p-8 text-center sm:p-12">
           <h2 className="text-xl font-semibold">No financial data available</h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-600">
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">
             This owner has no normalized accounts, transactions, assets, or
             calendar records yet. Load the synthetic demo seed to preview the
             dashboard. Future milestones will add connection, import, and
             manual-entry workflows.
           </p>
-          <p className="mt-5 rounded-lg bg-slate-100 px-4 py-3 font-mono text-sm">
+          <p className="mt-5 rounded-lg bg-[var(--surface-subtle)] px-4 py-3 font-mono text-sm">
             pnpm db:seed
           </p>
         </Card>
@@ -126,12 +126,12 @@ export function OverviewDashboard({
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
-          <p className="mt-2 max-w-2xl text-slate-600">
+          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
             A read-only snapshot built from normalized synthetic financial
             records.
           </p>
         </div>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-[var(--text-secondary)]">
           {dashboard.latestDataAt
             ? `${formatRelativeTime(dashboard.latestDataAt, now)} · ${formatDate(dashboard.latestDataAt)}`
             : "Latest update unavailable"}

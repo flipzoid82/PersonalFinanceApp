@@ -1,5 +1,9 @@
 import { AccountSource, DataSourceStatus, Prisma } from "@prisma/client";
-import { DEBT_ACCOUNT_TYPES, INVESTMENT_ACCOUNT_TYPES } from "./constants";
+import {
+  accountTypeLabel,
+  DEBT_ACCOUNT_TYPES,
+  INVESTMENT_ACCOUNT_TYPES,
+} from "./constants";
 import { freshnessState } from "./freshness";
 import type {
   PortfolioAccount,
@@ -9,8 +13,45 @@ import type {
 } from "./types";
 import { titleCaseEnum } from "@/lib/dashboard/formatters";
 import { isCurrentConnectedAccount } from "@/lib/accounts/current";
+import { calculateInvestmentInsights } from "./investment-insights";
+import { calculateNetWorthHistory } from "./net-worth-history";
+import type { NetWorthRange } from "./types";
+import { latestAccountValue } from "./values";
+
+export { latestAccountValue } from "./values";
 
 const ZERO = new Prisma.Decimal(0);
+
+function accountGroup(account: PortfolioAccount): PortfolioItem["group"] {
+  if (INVESTMENT_ACCOUNT_TYPES.has(account.accountType)) return "investment";
+  if (account.accountType === "CHECKING" || account.accountType === "SAVINGS")
+    return "cash";
+  if (account.accountType === "CREDIT_CARD") return "credit-card";
+  if (account.accountType === "MORTGAGE") return "mortgage";
+  if (account.accountType === "LOAN") return "loan";
+  return DEBT_ACCOUNT_TYPES.has(account.accountType)
+    ? "other-debt"
+    : "other-asset";
+}
+
+function manualAssetGroup(
+  asset: RawPortfolioData["manualAssets"][number],
+): PortfolioItem["group"] {
+  if (asset.isDebt) {
+    if (asset.assetType === "MORTGAGE") return "mortgage";
+    if (
+      asset.assetType === "AUTO_LOAN" ||
+      asset.assetType === "STUDENT_LOAN" ||
+      asset.assetType === "PERSONAL_LOAN"
+    )
+      return "loan";
+    return "other-debt";
+  }
+  if (asset.assetType === "HOME" || asset.assetType === "OTHER_REAL_ESTATE")
+    return "property";
+  if (asset.assetType === "VEHICLE") return "vehicle";
+  return "other-asset";
+}
 
 function sourceLabel(source: AccountSource) {
   return source === AccountSource.SYNCED
@@ -20,60 +61,10 @@ function sourceLabel(source: AccountSource) {
       : ("Manual" as const);
 }
 
-function accountUpdateDate(account: PortfolioAccount) {
-  if (account.source === AccountSource.SYNCED)
-    return (
-      account.lastSyncedAt ??
-      account.dataSource.lastUpdatedAt ??
-      account.updatedAt
-    );
-  if (account.source === AccountSource.IMPORTED)
-    return (
-      account.lastImportedAt ??
-      account.dataSource.lastUpdatedAt ??
-      account.updatedAt
-    );
-  return account.updatedAt;
-}
-
-export function latestAccountValue(
-  account: PortfolioAccount,
-  now = new Date(),
-) {
-  if (INVESTMENT_ACCOUNT_TYPES.has(account.accountType)) {
-    const snapshot = account.investmentSnapshots
-      .filter(({ asOfDate }) => asOfDate <= now)
-      .sort((a, b) => b.asOfDate.getTime() - a.asOfDate.getTime())[0];
-    if (snapshot)
-      return {
-        value: snapshot.totalValue,
-        isAvailable: true,
-        source: "Investment snapshot" as const,
-        updatedAt: snapshot.asOfDate,
-      };
-  } else {
-    const snapshot = account.balanceSnapshots
-      .filter(({ capturedAt }) => capturedAt <= now)
-      .sort((a, b) => b.capturedAt.getTime() - a.capturedAt.getTime())[0];
-    if (snapshot)
-      return {
-        value: snapshot.currentBalance,
-        isAvailable: true,
-        source: "Balance snapshot" as const,
-        updatedAt: snapshot.capturedAt,
-      };
-  }
-  return {
-    value: account.currentBalance,
-    isAvailable: account.balanceAvailable !== false,
-    source: "Account balance" as const,
-    updatedAt: accountUpdateDate(account),
-  };
-}
-
 export function calculatePortfolio(
   data: RawPortfolioData,
   now = new Date(),
+  range: NetWorthRange = "30d",
 ): PortfolioViewModel {
   const ownedAccounts = data.accounts.filter(
     ({ userId }) => userId === data.ownerId,
@@ -93,8 +84,9 @@ export function calculatePortfolio(
     items.push({
       id: account.id,
       name: account.name,
-      typeLabel: titleCaseEnum(account.accountType),
+      typeLabel: accountTypeLabel(account.accountType),
       category,
+      group: accountGroup(account),
       value: latest.value.abs(),
       valueAvailable: latest.isAvailable,
       currency: account.currency,
@@ -113,6 +105,7 @@ export function calculatePortfolio(
       name: asset.name,
       typeLabel: titleCaseEnum(asset.assetType),
       category: asset.isDebt ? "debt" : "asset",
+      group: manualAssetGroup(asset),
       value: asset.currentValue.abs(),
       valueAvailable: true,
       currency: asset.currency,
@@ -158,7 +151,7 @@ export function calculatePortfolio(
       "One or more active accounts have an unavailable balance.",
     );
 
-  return {
+  const viewModel = {
     isEmpty: items.filter(({ isCurrent }) => isCurrent).length === 0,
     isPartial: partialReasons.length > 0,
     partialReasons,
@@ -174,5 +167,10 @@ export function calculatePortfolio(
         isCurrentConnectedAccount(account) &&
         INVESTMENT_ACCOUNT_TYPES.has(account.accountType),
     ),
+  };
+  return {
+    ...viewModel,
+    netWorthHistory: calculateNetWorthHistory(data, range, now),
+    investmentInsights: calculateInvestmentInsights(viewModel, now),
   };
 }

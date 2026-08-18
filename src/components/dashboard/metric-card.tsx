@@ -23,13 +23,18 @@ export function MetricCard({
 }) {
   return (
     <Card
-      className={cn(order, "min-h-36 p-5 transition hover:border-slate-300")}
+      className={cn(
+        order,
+        "min-h-36 p-5 transition hover:border-[var(--semantic-info-border)]",
+      )}
     >
       <Link
         href={href}
-        className="block h-full rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-slate-900"
+        className="block h-full rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--focus-ring)]"
       >
-        <h3 className="text-sm font-semibold text-slate-600">{label}</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-secondary)]">
+          {label}
+        </h3>
         <p
           className={cn(
             "mt-4 text-2xl font-bold tracking-tight sm:text-3xl",
@@ -38,7 +43,9 @@ export function MetricCard({
         >
           {value}
         </p>
-        <p className="mt-3 text-xs leading-5 text-slate-500">{support}</p>
+        <p className="mt-3 text-xs leading-5 text-[var(--text-secondary)]">
+          {support}
+        </p>
       </Link>
     </Card>
   );

@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { SemanticBadge } from "@/components/ui/semantic";
 import {
   formatCurrency,
   formatDate,
@@ -21,7 +22,7 @@ function PanelHeader({ title, detail }: { title: string; detail: string }) {
   return (
     <div>
       <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="mt-1 text-sm text-slate-500">{detail}</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
     </div>
   );
 }
@@ -67,7 +68,7 @@ function AccountBalances({
         detail="Active normalized accounts; liabilities are labeled as amounts owed."
       />
       <ul
-        className="mt-5 divide-y divide-slate-200"
+        className="mt-5 divide-y divide-[var(--border-default)]"
         aria-label="Active account balances"
       >
         {dashboard.accounts.map((account) => {
@@ -80,18 +81,18 @@ function AccountBalances({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate font-medium">{account.name}</p>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  <SemanticBadge tone="muted">
                     {sourceLabel(account.source)}
-                  </span>
-                  <span className="text-xs text-slate-500">
+                  </SemanticBadge>
+                  <span className="text-xs text-[var(--text-secondary)]">
                     {isDebt ? "Debt" : "Asset"}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   {account.institutionName ?? account.dataSource.displayName} ·{" "}
                   {titleCaseEnum(account.accountType)}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
                   {accountFreshness(account, now)}
                 </p>
               </div>
@@ -104,7 +105,7 @@ function AccountBalances({
                         account.currency,
                       )}${isDebt ? " owed" : ""}`}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
                   {account.availableBalance
                     ? `${formatCurrency(account.availableBalance, account.currency)} available`
                     : account.creditLimit
@@ -129,7 +130,7 @@ function RecentTransactions({ dashboard }: { dashboard: DashboardViewModel }) {
       />
       {dashboard.recentTransactions.length ? (
         <ul
-          className="mt-5 divide-y divide-slate-200"
+          className="mt-5 divide-y divide-[var(--border-default)]"
           aria-label="Recent transactions"
         >
           {dashboard.recentTransactions.map((transaction) => (
@@ -145,18 +146,17 @@ function RecentTransactions({ dashboard }: { dashboard: DashboardViewModel }) {
                   >
                     {transaction.name}
                   </Link>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold",
+                  <SemanticBadge
+                    tone={
                       transaction.status === TransactionStatus.PENDING
-                        ? "bg-amber-100 text-amber-900"
-                        : "bg-emerald-100 text-emerald-900",
-                    )}
+                        ? "warning"
+                        : "info"
+                    }
                   >
                     {titleCaseEnum(transaction.status)}
-                  </span>
+                  </SemanticBadge>
                 </div>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   {transaction.accountName} · {transaction.category}
                   {transaction.role
                     ? ` · ${titleCaseEnum(transaction.role)}`
@@ -171,7 +171,7 @@ function RecentTransactions({ dashboard }: { dashboard: DashboardViewModel }) {
                   )}
                 </p>
                 <time
-                  className="text-xs text-slate-500"
+                  className="text-xs text-[var(--text-secondary)]"
                   dateTime={transaction.date.toISOString()}
                 >
                   {formatDate(transaction.date)}
@@ -181,7 +181,7 @@ function RecentTransactions({ dashboard }: { dashboard: DashboardViewModel }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="mt-6 text-sm text-[var(--text-secondary)]">
           No activity in the last 30 days.
         </p>
       )}
@@ -211,13 +211,15 @@ function SpendingCategories({ dashboard }: { dashboard: DashboardViewModel }) {
                   <span>{formatCurrency(amount)}</span>
                 </div>
                 <div
-                  className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100"
+                  className="mt-2 h-3 overflow-hidden rounded-full bg-[var(--surface-subtle)]"
                   aria-hidden="true"
                 >
                   <div
                     className={cn(
                       "h-full rounded-full",
-                      amount.isNegative() ? "bg-emerald-600" : "bg-sky-600",
+                      amount.isNegative()
+                        ? "bg-[var(--semantic-positive-text)]"
+                        : "bg-[var(--semantic-negative-text)]",
                     )}
                     style={{ width: `${Math.max(width, 3)}%` }}
                   />
@@ -231,7 +233,7 @@ function SpendingCategories({ dashboard }: { dashboard: DashboardViewModel }) {
           })}
         </ol>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="mt-6 text-sm text-[var(--text-secondary)]">
           No posted spending this month.
         </p>
       )}
@@ -248,7 +250,7 @@ function UpcomingActivity({ dashboard }: { dashboard: DashboardViewModel }) {
       />
       {dashboard.upcoming.length ? (
         <ul
-          className="mt-5 divide-y divide-slate-200"
+          className="mt-5 divide-y divide-[var(--border-default)]"
           aria-label="Upcoming bills and activity"
         >
           {dashboard.upcoming.map((event) => (
@@ -259,25 +261,20 @@ function UpcomingActivity({ dashboard }: { dashboard: DashboardViewModel }) {
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium">{event.title}</p>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-semibold",
-                      event.dateLabel === "Confirmed"
-                        ? "bg-emerald-100 text-emerald-900"
-                        : "bg-indigo-100 text-indigo-900",
-                    )}
+                  <SemanticBadge
+                    tone={event.dateLabel === "Confirmed" ? "info" : "warning"}
                   >
                     {event.dateLabel}
-                  </span>
+                  </SemanticBadge>
                 </div>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   {event.accountName ?? "Account unavailable"} ·{" "}
                   {event.amountLabel} · {titleCaseEnum(event.confidence)}{" "}
                   confidence
                 </p>
                 {event.dateLabel === "Confirmed" &&
                 event.predictedPostingDate ? (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     Predicted posting{" "}
                     {formatShortDate(event.predictedPostingDate)}
                   </p>
@@ -288,12 +285,12 @@ function UpcomingActivity({ dashboard }: { dashboard: DashboardViewModel }) {
                   {formatCurrency(event.amount, event.currency)}
                 </p>
                 <time
-                  className="text-xs text-slate-500"
+                  className="text-xs text-[var(--text-secondary)]"
                   dateTime={event.date.toISOString()}
                 >
                   {event.dateLabel} date {formatShortDate(event.date)}
                 </time>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[var(--text-secondary)]">
                   {titleCaseEnum(event.status)}
                 </p>
               </div>
@@ -301,7 +298,7 @@ function UpcomingActivity({ dashboard }: { dashboard: DashboardViewModel }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="mt-6 text-sm text-[var(--text-secondary)]">
           No expected outflows in the next 14 days.
         </p>
       )}
@@ -321,7 +318,7 @@ function InvestmentSummary({ dashboard }: { dashboard: DashboardViewModel }) {
       </p>
       {dashboard.investmentAccounts.length ? (
         <ul
-          className="mt-4 divide-y divide-slate-200"
+          className="mt-4 divide-y divide-[var(--border-default)]"
           aria-label="Investment accounts"
         >
           {dashboard.investmentAccounts.map((account) => (
@@ -331,7 +328,7 @@ function InvestmentSummary({ dashboard }: { dashboard: DashboardViewModel }) {
             >
               <div>
                 <p className="font-medium">{account.name}</p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
                   {sourceLabel(account.source)} · {account.valueSource} · As of{" "}
                   {formatDate(account.asOfDate)}
                 </p>
@@ -343,7 +340,7 @@ function InvestmentSummary({ dashboard }: { dashboard: DashboardViewModel }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-4 text-sm text-slate-500">
+        <p className="mt-4 text-sm text-[var(--text-secondary)]">
           Investment values unavailable.
         </p>
       )}
@@ -375,7 +372,7 @@ function NetWorthTrend({ dashboard }: { dashboard: DashboardViewModel }) {
       {dashboard.netWorthTrend.length >= 2 ? (
         <>
           <div
-            className="mt-7 flex h-44 items-end gap-2 border-b border-slate-300 px-1"
+            className="mt-7 flex h-44 items-end gap-2 border-b border-[var(--border-default)] px-1"
             role="img"
             aria-label={`Tracked net worth changed from ${formatCurrency(dashboard.netWorthTrend[0].value)} to ${formatCurrency(dashboard.netWorthTrend.at(-1)!.value)} over ${dashboard.netWorthTrend.length} stored dates.`}
           >
@@ -393,7 +390,12 @@ function NetWorthTrend({ dashboard }: { dashboard: DashboardViewModel }) {
                   className="flex min-w-0 flex-1 flex-col items-center"
                 >
                   <div
-                    className="w-full max-w-12 rounded-t bg-slate-800"
+                    className={cn(
+                      "w-full max-w-12 rounded-t",
+                      point.value.isNegative()
+                        ? "bg-[var(--semantic-negative-text)]"
+                        : "bg-[var(--semantic-positive-text)]",
+                    )}
                     style={{ height: `${relative.toNumber()}%` }}
                     aria-hidden="true"
                   />
@@ -401,7 +403,7 @@ function NetWorthTrend({ dashboard }: { dashboard: DashboardViewModel }) {
               );
             })}
           </div>
-          <div className="mt-3 flex justify-between text-xs text-slate-500">
+          <div className="mt-3 flex justify-between text-xs text-[var(--text-secondary)]">
             <span>{formatShortDate(dashboard.netWorthTrend[0].date)}</span>
             <span>{formatShortDate(dashboard.netWorthTrend.at(-1)!.date)}</span>
           </div>
@@ -424,7 +426,7 @@ function NetWorthTrend({ dashboard }: { dashboard: DashboardViewModel }) {
           </table>
         </>
       ) : (
-        <p className="mt-6 text-sm text-slate-500">
+        <p className="mt-6 text-sm text-[var(--text-secondary)]">
           Trend unavailable — at least two stored snapshot dates are required.
         </p>
       )}
@@ -446,7 +448,7 @@ function DataFreshness({
         detail="Provider-neutral source health. Synthetic records are not live connections."
       />
       <ul
-        className="mt-5 divide-y divide-slate-200"
+        className="mt-5 divide-y divide-[var(--border-default)]"
         aria-label="Data source health"
       >
         {dashboard.sourceHealth.map((source) => (
@@ -454,25 +456,27 @@ function DataFreshness({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-medium">{source.name}</p>
               <div className="flex gap-2 text-xs font-semibold">
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">
+                <SemanticBadge tone="muted" className="px-2 py-1">
                   {source.sourceLabel}
-                </span>
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-1",
+                </SemanticBadge>
+                <SemanticBadge
+                  tone={
                     source.statusLabel === "Current"
-                      ? "bg-emerald-100 text-emerald-900"
+                      ? "info"
                       : source.statusLabel === "Stale"
-                        ? "bg-amber-100 text-amber-900"
-                        : "bg-rose-100 text-rose-900",
-                  )}
+                        ? "warning"
+                        : "negative"
+                  }
+                  className="px-2 py-1"
                 >
                   {source.statusLabel}
-                </span>
+                </SemanticBadge>
               </div>
             </div>
-            <p className="mt-2 text-sm text-slate-600">{source.detail}</p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              {source.detail}
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
               {formatRelativeTime(source.updatedAt, now)}
             </p>
           </li>

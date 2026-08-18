@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
@@ -28,13 +29,31 @@ describe("authenticated dashboard layout", () => {
       displayName: "Synthetic Owner",
     });
 
-    render(await DashboardLayout({ children: <p>Protected content</p> }));
+    const { container } = render(
+      <ThemeProvider initialPreference="system">
+        {await DashboardLayout({ children: <p>Protected content</p> })}
+      </ThemeProvider>,
+    );
 
     expect(screen.getByRole("button", { name: "Sign out" })).toHaveAttribute(
       "type",
       "button",
     );
     expect(screen.getByTestId("session-controller")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "System theme active. Activate to switch to Dark theme.",
+      }),
+    ).toHaveAttribute("data-theme-preference", "system");
+    expect(container.querySelector("header")).toHaveClass(
+      "grid-cols-[auto_1fr_auto]",
+    );
+    expect(screen.getByText("Signed in as Synthetic Owner")).toHaveClass(
+      "justify-self-start",
+    );
+    expect(
+      screen.getByRole("button", { name: "Sign out" }).parentElement,
+    ).toHaveClass("justify-self-end");
     expect(mocks.requireUser).toHaveBeenCalledOnce();
   });
 

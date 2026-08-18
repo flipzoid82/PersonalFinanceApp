@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { ThemeControl } from "@/components/theme/theme-control";
 import { sessionPolicy } from "@/lib/session-policy";
 
 function duration(milliseconds: number) {
@@ -23,6 +24,9 @@ export default function SettingsPage() {
           Review application preferences and security behavior.
         </p>
       </div>
+      <Card className="p-6">
+        <ThemeControl variant="settings" />
+      </Card>
       <Card className="p-6">
         <h2 className="text-xl font-semibold">Session security</h2>
         <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">

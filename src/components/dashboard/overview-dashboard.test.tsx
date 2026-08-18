@@ -124,6 +124,10 @@ describe("OverviewDashboard states", () => {
     expect(
       screen.getByRole("link", { name: "Synthetic Coffee" }),
     ).toHaveAttribute("href", "/transactions/transaction-1");
+    expect(screen.getByText("Posted")).toHaveClass(
+      "bg-[var(--semantic-info-bg)]",
+      "text-[var(--semantic-info-text)]",
+    );
   });
 
   it("applies established semantic tones with visible financial labels and signs", () => {

@@ -37,18 +37,21 @@ export function MonthView({
         <h2 id="month-view-heading" className="text-xl font-bold">
           Monthly calendar
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-[var(--text-secondary)]">
           Confirmed due dates are primary. Predicted dates remain explicitly
           labeled.
         </p>
       </div>
       <Card className="overflow-hidden">
-        <div className="grid grid-cols-7 border-b bg-slate-50" role="row">
+        <div
+          className="grid grid-cols-7 border-b bg-[var(--surface-subtle)]"
+          role="row"
+        >
           {WEEKDAYS.map((day) => (
             <div
               key={day}
               role="columnheader"
-              className="p-1.5 text-center text-xs font-bold text-slate-600 sm:p-2 sm:text-sm"
+              className="p-1.5 text-center text-xs font-bold text-[var(--text-secondary)] sm:p-2 sm:text-sm"
             >
               {day}
             </div>
@@ -73,13 +76,15 @@ export function MonthView({
                 aria-label={`${iso}, ${events.length} event${events.length === 1 ? "" : "s"}`}
                 className={cn(
                   "min-h-24 min-w-0 border-r border-b p-1 sm:min-h-32 sm:p-2",
-                  !inMonth && "bg-slate-50 text-slate-400",
-                  iso === today && "ring-2 ring-sky-600 ring-inset",
+                  !inMonth &&
+                    "bg-[var(--surface-subtle)] text-[var(--semantic-muted-text)]",
+                  iso === today &&
+                    "ring-2 ring-[var(--semantic-info-border)] ring-inset",
                 )}
               >
                 <Link
                   href={eventUrl(model, date)}
-                  className="inline-flex size-7 items-center justify-center rounded-full text-xs font-bold hover:bg-slate-100 focus-visible:outline-2"
+                  className="inline-flex size-7 items-center justify-center rounded-full text-xs font-bold hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
                   aria-label={`View details for ${iso}`}
                 >
                   {date.getUTCDate()}
@@ -89,7 +94,7 @@ export function MonthView({
                     <li key={event.id}>
                       <Link
                         href={`${eventUrl(model, date)}`}
-                        className="block rounded bg-slate-100 p-1 text-[10px] leading-tight text-slate-800 focus-visible:outline-2 sm:text-xs"
+                        className="block rounded border border-[var(--semantic-muted-border)] bg-[var(--semantic-muted-bg)] p-1 text-[10px] leading-tight text-[var(--semantic-muted-text)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)] sm:text-xs"
                       >
                         <span className="block truncate font-semibold">
                           {event.title}
@@ -126,7 +131,7 @@ export function MonthView({
             ? `Selected day: ${new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(model.filters.selectedDay)}`
             : "Accessible month event list"}
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-[var(--text-secondary)]">
           {model.filters.selectedDay
             ? "Details for the selected date."
             : "This chronological list is an accessible alternative to the month grid."}
@@ -150,7 +155,7 @@ export function MonthView({
             ))}
           </ul>
         ) : (
-          <Card className="p-6 text-center text-slate-600">
+          <Card className="p-6 text-center text-[var(--text-secondary)]">
             No events on this selected day.
           </Card>
         )}

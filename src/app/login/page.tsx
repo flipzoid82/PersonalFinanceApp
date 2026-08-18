@@ -22,11 +22,11 @@ export default async function LoginPage(
   return (
     <main className="flex min-h-screen items-center justify-center p-5">
       <Card className="w-full max-w-md p-7 sm:p-9">
-        <p className="text-sm font-semibold text-slate-500">
+        <p className="text-sm font-semibold text-[var(--text-secondary)]">
           PRIVATE DASHBOARD
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Welcome back</h1>
-        <p className="mt-2 mb-7 text-slate-600">
+        <p className="mt-2 mb-7 text-[var(--text-secondary)]">
           Sign in with the owner account configured for this application.
         </p>
         {reason === "expired" ? (

@@ -4,6 +4,7 @@ import type {
   ConnectionStatus,
   DataSourceStatus,
   InvestmentSource,
+  InvestmentTransactionType,
   ManualAssetType,
   Prisma,
 } from "@prisma/client";
@@ -37,6 +38,7 @@ export type PortfolioAccount = {
     id?: string;
     provider: string;
     status: ConnectionStatus;
+    disconnectedAt?: Date | null;
   } | null;
   balanceSnapshots: Array<{
     id: string;
@@ -58,10 +60,27 @@ export type PortfolioAccount = {
     tickerSymbol: string | null;
     securityType: string | null;
     quantity: Prisma.Decimal | null;
+    price: Prisma.Decimal | null;
     currentValue: Prisma.Decimal;
+    costBasis: Prisma.Decimal | null;
+    vestedQuantity: Prisma.Decimal | null;
+    vestedValue: Prisma.Decimal | null;
     currency: string;
     source: InvestmentSource;
     asOfDate: Date;
+  }>;
+  investmentTransactions: Array<{
+    id: string;
+    source: InvestmentSource;
+    transactionDate: Date;
+    transactionType: InvestmentTransactionType;
+    securityName: string | null;
+    tickerSymbol: string | null;
+    amount: Prisma.Decimal | null;
+    quantity: Prisma.Decimal | null;
+    price: Prisma.Decimal | null;
+    fees: Prisma.Decimal | null;
+    currency: string;
   }>;
 };
 
@@ -93,6 +112,16 @@ export type PortfolioItem = {
   name: string;
   typeLabel: string;
   category: "asset" | "debt" | "investment";
+  group:
+    | "cash"
+    | "investment"
+    | "property"
+    | "vehicle"
+    | "other-asset"
+    | "credit-card"
+    | "mortgage"
+    | "loan"
+    | "other-debt";
   value: Prisma.Decimal;
   valueAvailable: boolean;
   currency: string;
@@ -120,4 +149,70 @@ export type PortfolioViewModel = {
   accounts: PortfolioAccount[];
   manualAssets: PortfolioManualAsset[];
   investmentAccounts: PortfolioAccount[];
+  netWorthHistory: NetWorthHistory;
+  investmentInsights: InvestmentInsights;
+};
+
+export type NetWorthRange = "30d" | "3m" | "6m" | "1y" | "all";
+
+export type NetWorthHistoryPoint = {
+  date: Date;
+  assets: Prisma.Decimal;
+  debts: Prisma.Decimal;
+  value: Prisma.Decimal;
+};
+
+export type NetWorthHistory = {
+  range: NetWorthRange;
+  rangeLabel: string;
+  points: NetWorthHistoryPoint[];
+  isPartial: boolean;
+  partialReasons: string[];
+  change: Prisma.Decimal | null;
+};
+
+export type InvestmentAccountInsight = {
+  account: PortfolioAccount;
+  currentValue: Prisma.Decimal;
+  valueUpdatedAt: Date | null;
+  valueAvailable: boolean;
+  latestHoldings: PortfolioAccount["investmentHoldings"];
+  holdingsAsOf: Date | null;
+  holdingsAlignedToValue: boolean;
+  knownHoldingsValue: Prisma.Decimal;
+  unallocatedValue: Prisma.Decimal;
+};
+
+export type InvestmentAllocationItem = {
+  id: string;
+  label: string;
+  accountName: string;
+  value: Prisma.Decimal;
+  percentage: Prisma.Decimal | null;
+  kind: "holding" | "unallocated";
+};
+
+export type InvestmentContribution = {
+  id: string;
+  accountName: string;
+  date: Date;
+  amount: Prisma.Decimal;
+  currency: string;
+  source: InvestmentSource;
+  description: string | null;
+};
+
+export type InvestmentInsights = {
+  accounts: InvestmentAccountInsight[];
+  accountAllocation: Array<{
+    id: string;
+    label: string;
+    value: Prisma.Decimal;
+    percentage: Prisma.Decimal | null;
+  }>;
+  holdingAllocation: InvestmentAllocationItem[];
+  knownHoldingsValue: Prisma.Decimal;
+  unallocatedValue: Prisma.Decimal;
+  contributions: InvestmentContribution[];
+  contributionTotal: Prisma.Decimal;
 };

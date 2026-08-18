@@ -47,6 +47,7 @@ function account(
     balanceSnapshots: [],
     investmentSnapshots: [],
     investmentHoldings: [],
+    investmentTransactions: [],
     ...overrides,
   };
 }
@@ -105,7 +106,11 @@ describe("Milestone 5 portfolio calculations", () => {
           tickerSymbol: null,
           securityType: null,
           quantity: null,
+          price: null,
           currentValue: money("999"),
+          costBasis: null,
+          vestedQuantity: null,
+          vestedValue: null,
           currency: "USD",
           source: "MANUAL",
           asOfDate: NOW,
