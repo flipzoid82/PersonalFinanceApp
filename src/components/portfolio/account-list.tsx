@@ -20,6 +20,7 @@ import {
   DEBT_ACCOUNT_TYPES,
   INVESTMENT_ACCOUNT_TYPES,
   MANUAL_ACCOUNT_OPTIONS,
+  accountTypeLabel,
   freshnessState,
   latestAccountValue,
   type PortfolioAccount,
@@ -129,7 +130,7 @@ export function AccountList({
                   </div>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">
                     {account.institutionName ?? account.dataSource.displayName}{" "}
-                    · {titleCaseEnum(account.accountType)}
+                    · {accountTypeLabel(account.accountType)}
                     {account.accountSubtype
                       ? ` · ${account.accountSubtype}`
                       : ""}

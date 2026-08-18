@@ -17,7 +17,12 @@ export async function getPortfolioData(
           },
         },
         institutionConnection: {
-          select: { id: true, provider: true, status: true },
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+            disconnectedAt: true,
+          },
         },
         balanceSnapshots: {
           where: { userId: ownerId },
@@ -30,6 +35,10 @@ export async function getPortfolioData(
         investmentHoldings: {
           where: { userId: ownerId },
           orderBy: { currentValue: "desc" },
+        },
+        investmentTransactions: {
+          where: { userId: ownerId },
+          orderBy: { transactionDate: "desc" },
         },
       },
       orderBy: [{ isActive: "desc" }, { name: "asc" }],

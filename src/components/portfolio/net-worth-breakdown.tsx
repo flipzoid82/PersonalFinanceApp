@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { Prisma } from "@prisma/client";
 import { HelpTooltip } from "@/components/ui/help-tooltip";
 import { SemanticBadge, SemanticValue } from "@/components/ui/semantic";
 import { formatCurrency, formatRelativeTime } from "@/lib/dashboard/formatters";
@@ -12,6 +13,33 @@ export function NetWorthBreakdown({
   portfolio: PortfolioViewModel;
   now: Date;
 }) {
+  const groupDefinitions = [
+    { label: "Cash", groups: ["cash"], debt: false },
+    { label: "Investments", groups: ["investment"], debt: false },
+    {
+      label: "Property and vehicles",
+      groups: ["property", "vehicle"],
+      debt: false,
+    },
+    { label: "Other assets", groups: ["other-asset"], debt: false },
+    {
+      label: "Credit cards, mortgages, and loans",
+      groups: ["credit-card", "mortgage", "loan"],
+      debt: true,
+    },
+    { label: "Other debts", groups: ["other-debt"], debt: true },
+  ] as const;
+  const groupTotals = groupDefinitions.map((definition) => ({
+    ...definition,
+    value: portfolio.items
+      .filter(
+        ({ group, isCurrent, valueAvailable }) =>
+          isCurrent &&
+          valueAvailable &&
+          definition.groups.includes(group as never),
+      )
+      .reduce((total, { value }) => total.plus(value), new Prisma.Decimal(0)),
+  }));
   const groups = [
     {
       title: "Assets and investments",
@@ -35,6 +63,30 @@ export function NetWorthBreakdown({
         Assets use a plus sign and debts use a minus sign, so meaning never
         depends on color alone.
       </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {groupTotals.map(({ label, value, debt }) => (
+          <Card key={label} className="p-4">
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">
+              {label}
+            </p>
+            <p className="mt-2">
+              <SemanticValue
+                tone={
+                  debt
+                    ? "negative"
+                    : label === "Investments"
+                      ? "investment"
+                      : "positive"
+                }
+                label={label}
+              >
+                {debt ? "−" : "+"}
+                {formatCurrency(value)}
+              </SemanticValue>
+            </p>
+          </Card>
+        ))}
+      </div>
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-2">
         {groups.map((group) => (
           <Card key={group.title} className="p-5 sm:p-6">
@@ -84,6 +136,11 @@ export function NetWorthBreakdown({
                             {PORTFOLIO_HELP.freshness}
                           </HelpTooltip>
                         </span>
+                        {!item.valueAvailable ? (
+                          <SemanticBadge tone="muted">
+                            Value unavailable
+                          </SemanticBadge>
+                        ) : null}
                       </div>
                       <p className="mt-1 text-xs text-[var(--text-secondary)]">
                         {item.typeLabel} · {item.sourceLabel} ·{" "}
@@ -91,21 +148,29 @@ export function NetWorthBreakdown({
                         {formatRelativeTime(item.updatedAt, now)}
                       </p>
                     </div>
-                    <SemanticValue
-                      tone={
-                        item.category === "debt"
-                          ? "negative"
-                          : item.category === "investment"
-                            ? "investment"
-                            : "positive"
-                      }
-                      label={
-                        item.category === "debt" ? "Debt amount" : "Asset value"
-                      }
-                    >
-                      {item.category === "debt" ? "−" : "+"}
-                      {formatCurrency(item.value, item.currency)}
-                    </SemanticValue>
+                    {item.valueAvailable ? (
+                      <SemanticValue
+                        tone={
+                          item.category === "debt"
+                            ? "negative"
+                            : item.category === "investment"
+                              ? "investment"
+                              : "positive"
+                        }
+                        label={
+                          item.category === "debt"
+                            ? "Debt amount"
+                            : "Asset value"
+                        }
+                      >
+                        {item.category === "debt" ? "−" : "+"}
+                        {formatCurrency(item.value, item.currency)}
+                      </SemanticValue>
+                    ) : (
+                      <span className="font-semibold text-[var(--text-secondary)]">
+                        Unavailable
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -60,10 +60,10 @@ export function CalendarControls({
             href={url(filters, { view })}
             aria-current={filters.view === view ? "page" : undefined}
             className={cn(
-              "rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900",
+              "rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]",
               filters.view === view
-                ? "bg-slate-900 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                ? "bg-[var(--text-primary)] text-[var(--surface-panel)]"
+                : "bg-[var(--surface-subtle)] text-[var(--text-primary)] hover:border-[var(--semantic-info-border)]",
             )}
           >
             {view === "month" ? "Month view" : "Upcoming list"}
@@ -80,7 +80,7 @@ export function CalendarControls({
                 day: undefined,
               })}
               aria-label="Previous month"
-              className="rounded-lg border p-2 hover:bg-slate-50 focus-visible:outline-2"
+              className="rounded-lg border p-2 hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
             >
               <ChevronLeft aria-hidden="true" size={20} />
             </Link>
@@ -93,14 +93,14 @@ export function CalendarControls({
                 day: undefined,
               })}
               aria-label="Next month"
-              className="rounded-lg border p-2 hover:bg-slate-50 focus-visible:outline-2"
+              className="rounded-lg border p-2 hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
             >
               <ChevronRight aria-hidden="true" size={20} />
             </Link>
           </div>
           <Link
             href={url(filters, { month: formatMonth(now), day: undefined })}
-            className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-slate-50 focus-visible:outline-2"
+            className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
           >
             Today / current month
           </Link>
@@ -115,10 +115,10 @@ export function CalendarControls({
                 href={url(filters, { days: String(days), view: "upcoming" })}
                 aria-current={filters.days === days ? "page" : undefined}
                 className={cn(
-                  "rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-2",
+                  "rounded-lg border px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]",
                   filters.days === days
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "hover:bg-slate-50",
+                    ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--surface-panel)]"
+                    : "hover:bg-[var(--surface-subtle)]",
                 )}
               >
                 {days} days
@@ -163,7 +163,7 @@ export function CalendarControls({
             <select
               name="kind"
               defaultValue={filters.dateKind}
-              className="mt-1 min-h-10 w-full rounded-lg border bg-white px-3 font-normal"
+              className="mt-1 min-h-10 w-full rounded-lg border bg-[var(--surface-panel)] px-3 font-normal text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
             >
               <option value="all">All dates and statuses</option>
               <option value="confirmed">Confirmed only</option>
@@ -171,7 +171,7 @@ export function CalendarControls({
               <option value="needs-confirmation">Needs confirmation</option>
             </select>
           </label>
-          <button className="min-h-10 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-2">
+          <button className="min-h-10 rounded-lg bg-[var(--text-primary)] px-4 py-2 text-sm font-semibold text-[var(--surface-panel)] focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]">
             Apply filters
           </button>
         </form>

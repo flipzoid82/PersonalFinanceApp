@@ -52,11 +52,11 @@ export function InvestmentSnapshots({
   return (
     <section aria-labelledby="snapshot-title" className="mt-8">
       <h2 id="snapshot-title" className="text-xl font-bold">
-        Investment balances and holdings
+        Balance history and updates
       </h2>
       <p className="mt-2 text-sm text-[var(--text-secondary)]">
-        The latest account snapshot is authoritative. Holdings are detail only
-        and are not added again.
+        The latest account snapshot is authoritative. Older snapshots remain
+        available as dated history.
       </p>
       <div className="mt-4 space-y-4">
         {accounts.map((account) => (
@@ -197,35 +197,6 @@ export function InvestmentSnapshots({
                 is used.
               </p>
             )}
-
-            {account.investmentHoldings.length ? (
-              <div className="mt-5 border-t pt-4">
-                <h4 className="text-sm font-semibold">Available holdings</h4>
-                <ul className="mt-2 divide-y" aria-label="Available holdings">
-                  {account.investmentHoldings.map((holding) => (
-                    <li
-                      key={holding.id}
-                      className="flex flex-wrap justify-between gap-3 py-3 text-sm"
-                    >
-                      <span>
-                        {holding.securityName}
-                        {holding.tickerSymbol
-                          ? ` (${holding.tickerSymbol})`
-                          : ""}
-                        <span className="block text-xs text-[var(--text-secondary)]">
-                          {titleCaseEnum(holding.source)} · As of{" "}
-                          {formatDate(holding.asOfDate)}
-                        </span>
-                      </span>
-                      <SemanticValue tone="investment" label="Holding value">
-                        +
-                        {formatCurrency(holding.currentValue, holding.currency)}
-                      </SemanticValue>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
           </Card>
         ))}
       </div>

@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <main className="mx-auto max-w-xl px-6 py-24 text-center">
       <h1 className="text-3xl font-bold">Page not found</h1>
-      <p className="mt-3 text-slate-600">
+      <p className="mt-3 text-[var(--text-secondary)]">
         The page you requested does not exist.
       </p>
       <Link

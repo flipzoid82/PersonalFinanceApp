@@ -3,6 +3,8 @@
 import {
   AccountType,
   DataSourceType,
+  InvestmentSource,
+  InvestmentTransactionType,
   ManualAssetType,
   Prisma,
   PrismaClient,
@@ -146,6 +148,61 @@ describeDatabase("Milestone 5 portfolio integration", () => {
       REFERENCE,
     );
     expect(dashboard.metrics.netWorth.toFixed(4)).toBe("396632.7341");
+  });
+
+  it("queries only owner investment activity and reports explicit contributions", async () => {
+    const initial = await getPortfolioData(ownerId);
+    const investment = initial.accounts.find(
+      ({ accountType }) => accountType === AccountType.BROKERAGE,
+    );
+    expect(investment).toBeDefined();
+    const other = await prisma.user.create({
+      data: {
+        email: "portfolio-activity-other@example.test",
+        passwordHash: "disabled",
+      },
+    });
+    await prisma.investmentTransaction.createMany({
+      data: [
+        {
+          userId: ownerId,
+          accountId: investment!.id,
+          source: InvestmentSource.IMPORTED,
+          providerInvestmentTransactionId: "synthetic-contribution",
+          transactionDate: REFERENCE,
+          transactionType: InvestmentTransactionType.CONTRIBUTION,
+          amount: money("125.4321"),
+        },
+        {
+          userId: ownerId,
+          accountId: investment!.id,
+          source: InvestmentSource.IMPORTED,
+          providerInvestmentTransactionId: "synthetic-dividend",
+          transactionDate: REFERENCE,
+          transactionType: InvestmentTransactionType.DIVIDEND,
+          amount: money("25.0000"),
+        },
+        {
+          userId: other.id,
+          accountId: investment!.id,
+          source: InvestmentSource.IMPORTED,
+          providerInvestmentTransactionId: "cross-owner-contribution",
+          transactionDate: REFERENCE,
+          transactionType: InvestmentTransactionType.CONTRIBUTION,
+          amount: money("999999.0000"),
+        },
+      ],
+    });
+
+    const portfolio = calculatePortfolio(
+      await getPortfolioData(ownerId),
+      REFERENCE,
+    );
+    expect(portfolio.investmentInsights.contributions).toHaveLength(1);
+    expect(portfolio.investmentInsights.contributionTotal.toFixed(4)).toBe(
+      "125.4321",
+    );
+    expect(portfolio.totalInvestments.toFixed(4)).toBe("191352.4521");
   });
 
   it("creates, updates, safely deletes, and deactivates manual accounts", async () => {

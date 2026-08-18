@@ -19,6 +19,13 @@ export const DEBT_ACCOUNT_TYPES = new Set<AccountType>([
   AccountType.MANUAL_DEBT,
 ]);
 
+export function accountTypeLabel(type: AccountType) {
+  return (
+    MANUAL_ACCOUNT_OPTIONS.find(({ value }) => value === type)?.label ??
+    (type === AccountType.OTHER ? "Other account" : "Account")
+  );
+}
+
 export const MANUAL_ACCOUNT_OPTIONS = [
   { value: AccountType.CHECKING, label: "Checking" },
   { value: AccountType.SAVINGS, label: "Savings" },

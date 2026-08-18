@@ -1,17 +1,24 @@
 import { NetWorthBreakdown } from "@/components/portfolio/net-worth-breakdown";
+import { NetWorthHistory } from "@/components/portfolio/net-worth-history";
 import { PortfolioSummary } from "@/components/portfolio/portfolio-summary";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { getPortfolioViewModel } from "@/lib/portfolio/server";
+import { parseNetWorthRange } from "@/lib/portfolio";
 
-export default async function NetWorthPage() {
+export default async function NetWorthPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
   const user = await requireUser();
   const now = new Date();
-  const portfolio = await getPortfolioViewModel(user.id, now);
+  const range = parseNetWorthRange((await searchParams).range);
+  const portfolio = await getPortfolioViewModel(user.id, now, range);
   return (
     <div className="mx-auto max-w-7xl">
       <p className="text-sm font-semibold text-[var(--semantic-positive-text)]">
-        Milestone 5 · Source-aware calculation
+        Net-worth overview
       </p>
       <h1 className="mt-2 text-3xl font-bold tracking-tight">Net Worth</h1>
       <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
@@ -28,7 +35,10 @@ export default async function NetWorthPage() {
           </p>
         </Card>
       ) : (
-        <NetWorthBreakdown portfolio={portfolio} now={now} />
+        <>
+          <NetWorthHistory history={portfolio.netWorthHistory} />
+          <NetWorthBreakdown portfolio={portfolio} now={now} />
+        </>
       )}
     </div>
   );

@@ -13,7 +13,7 @@ export function LoginForm() {
       <div>
         <label
           htmlFor="email"
-          className="mb-2 block text-sm font-medium text-slate-700"
+          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
         >
           Email
         </label>
@@ -23,13 +23,13 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          className="min-h-11 w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="min-h-11 w-full rounded-lg border bg-[var(--surface-panel)] px-3 text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
         />
       </div>
       <div>
         <label
           htmlFor="password"
-          className="mb-2 block text-sm font-medium text-slate-700"
+          className="mb-2 block text-sm font-medium text-[var(--text-primary)]"
         >
           Password
         </label>
@@ -39,7 +39,7 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
-          className="min-h-11 w-full rounded-lg border border-slate-300 px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          className="min-h-11 w-full rounded-lg border bg-[var(--surface-panel)] px-3 text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
         />
       </div>
       {state.error ? (
