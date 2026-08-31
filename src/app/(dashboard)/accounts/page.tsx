@@ -10,6 +10,7 @@ import { PlaidConnectionManager } from "@/components/plaid/connection-manager";
 import { Card } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
 import { getPortfolioViewModel } from "@/lib/portfolio/server";
+import Link from "next/link";
 
 export default async function AccountsPage({
   searchParams,
@@ -39,6 +40,12 @@ export default async function AccountsPage({
       </p>
       <PortfolioFeedback {...feedback} />
       <PortfolioSummary portfolio={portfolio} />
+      <Link
+        href="/settings/imports?type=GENERIC_ACCOUNT_BALANCE_CSV"
+        className="mt-4 inline-block font-semibold text-[var(--semantic-info-text)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+      >
+        Import balance snapshots
+      </Link>
       <PlaidConnectionManager ownerId={user.id} now={now} />
 
       <section aria-labelledby="accounts-title" className="mt-8">

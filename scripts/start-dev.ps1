@@ -132,6 +132,15 @@ try {
   if ($coreIssues.Count -gt 0) { throw ("Invalid .env configuration: " + ($coreIssues -join "; ")) }
   Write-DevCheck PASS "Environment" "Required core configuration is present and valid. Secret values were not displayed."
 
+  $importEncryption = Initialize-DevImportEncryptionKey -Environment $environment -KeyPath $paths.ImportEncryptionKey
+  if ($importEncryption.Source -eq "Environment") {
+    Write-DevCheck PASS "Import storage" "The explicit dedicated encryption configuration is valid. Its value was not displayed."
+  } elseif ($importEncryption.Created) {
+    Write-DevCheck PASS "Import storage" "Generated an ignored development-only encryption key without displaying it or editing .env."
+  } else {
+    Write-DevCheck PASS "Import storage" "Reused the ignored development-only encryption key without displaying it or editing .env."
+  }
+
   if ($Plaid) {
     $plaidIssues = @(Test-DevPlaidConfiguration -Environment $environment)
     if ($plaidIssues.Count -gt 0) { throw ("Plaid Sandbox configuration is invalid: " + ($plaidIssues -join "; ")) }
@@ -160,11 +169,28 @@ try {
   if ($listenerPid) {
     $existingNext = Get-DevNextProcessRoot -ProcessId $listenerPid -ProjectRoot $projectRoot
     if ($null -eq $existingNext) { throw "Port 3000 is occupied by another process. Stop that process manually or choose a different port; no process was killed." }
-    if ($Restart) {
+    $hasImportState = $previousState -and
+      $previousState.PSObject.Properties.Name -contains "ImportEncryptionConfigured" -and
+      $previousState.ImportEncryptionConfigured -eq $true
+    $workflowOwnsExisting = $previousState -and
+      $previousState.PSObject.Properties.Name -contains "NextPid" -and
+      [int]$previousState.NextPid -eq [int]$existingNext.ProcessId -and
+      $previousState.NextStartedByWorkflow -eq $true
+    if (-not $Restart -and -not $hasImportState) {
+      if ($workflowOwnsExisting) {
+        Write-DevCheck WARN "Next.js" "The existing workflow-owned server predates import-storage configuration and will be restarted safely."
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "stop-dev.ps1")
+        if ($LASTEXITCODE -ne 0) { throw "The existing project server could not be stopped safely." }
+        $listenerPid = $null
+      } else {
+        throw "The existing project server cannot be proven to have import storage configured. Retry with pnpm dev:start -Restart."
+      }
+    }
+    if ($listenerPid -and $Restart) {
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "stop-dev.ps1")
       if ($LASTEXITCODE -ne 0) { throw "The existing project server could not be stopped safely." }
       $listenerPid = $null
-    } else {
+    } elseif ($listenerPid) {
       $nextPid = [int]$existingNext.ProcessId
       if ($previousState -and [int]$previousState.NextPid -eq $nextPid) {
         $nextStarted = [bool]$previousState.NextStartedByWorkflow
@@ -189,7 +215,13 @@ try {
     if (-not (Test-Path -LiteralPath $paths.Directory)) { New-Item -ItemType Directory -Path $paths.Directory -Force | Out-Null }
     Remove-Item -LiteralPath $paths.NextStdout, $paths.NextStderr -Force -ErrorAction SilentlyContinue
     $quotedNextCli = '"' + $nextCli + '"'
-    $nextProcess = Start-Process -FilePath $nodePath -ArgumentList @($quotedNextCli, "dev") -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $paths.NextStdout -RedirectStandardError $paths.NextStderr -PassThru
+    $previousProcessImportKey = [Environment]::GetEnvironmentVariable("IMPORT_FILE_ENCRYPTION_KEY", "Process")
+    try {
+      [Environment]::SetEnvironmentVariable("IMPORT_FILE_ENCRYPTION_KEY", $importEncryption.Key, "Process")
+      $nextProcess = Start-Process -FilePath $nodePath -ArgumentList @($quotedNextCli, "dev") -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput $paths.NextStdout -RedirectStandardError $paths.NextStderr -PassThru
+    } finally {
+      [Environment]::SetEnvironmentVariable("IMPORT_FILE_ENCRYPTION_KEY", $previousProcessImportKey, "Process")
+    }
     $nextPid = $nextProcess.Id
     $nextStarted = $true
     if (-not (Wait-ForApp)) {
@@ -219,6 +251,8 @@ try {
     NextPid = $nextPid
     NextStartedByWorkflow = $nextStarted
     NextStartTimeUtc = if ($nextProcessForState) { $nextProcessForState.StartTime.ToUniversalTime().ToString("o") } else { $null }
+    ImportEncryptionConfigured = $true
+    ImportEncryptionSource = $importEncryption.Source
     NgrokPid = if ($preservedNgrok) { $preservedNgrok.Id } else { $null }
     NgrokStartedByWorkflow = [bool]$preservedNgrok
     NgrokStartTimeUtc = if ($preservedNgrok) { $preservedNgrok.StartTime.ToUniversalTime().ToString("o") } else { $null }

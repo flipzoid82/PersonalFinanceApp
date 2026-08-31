@@ -25,6 +25,14 @@ if (!buildPhase || !isCi) {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: [
+    "@tesseract.js-data/eng",
+    "pdf-parse",
+    "tesseract.js",
+  ],
+  experimental: {
+    serverActions: { bodySizeLimit: "9mb" },
+  },
 };
 
 export default nextConfig;

@@ -12,4 +12,6 @@ export const DASHBOARD_ROUTES = [
   "/bills",
   "/spending",
   "/settings",
+  "/settings/imports",
+  "/settings/imports/[importId]",
 ] as const;

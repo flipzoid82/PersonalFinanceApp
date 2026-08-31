@@ -15,6 +15,8 @@ Fidelity and Fidelity NetBenefits must not be assumed to work through Plaid.
 - Recurring transaction candidates where available
 - Webhook-driven updates
 
+Plaid supplies source evidence. Provider categories and confidence may inform the canonical effective classification, but they do not overwrite owner corrections or establish a second reporting definition.
+
 ## Bill Calendar Inputs
 
 Plaid transaction history may be used to infer recurring bills and posting patterns.
@@ -26,6 +28,21 @@ The app must distinguish:
 - Observed transaction posting date
 - Predicted next posting date
 - Confirmed contractual due date
+
+Future routed cash-flow planning may use Plaid observations only through the same normalized, owner-scoped recurrence and Calendar semantics. Low-confidence provider evidence must not silently become a confirmed obligation or expected income commitment.
+
+## Household planning boundary
+
+- The owner explicitly opts current checking/savings accounts into planning.
+- Investments, credit limits, property, and debt capacity do not increase Safe-to-Spend.
+- Consolidated V1 planning is USD-only; non-USD Plaid activity remains visible but excluded from the consolidated result.
+- A fresh authoritative available balance may be the liquidity starting point.
+- Otherwise the current balance is reduced by unreconciled pending outflows.
+- The same pending outflow must never be subtracted from an available balance twice.
+- Pending income does not increase current Safe-to-Spend.
+- Pending-to-posted reconciliation must preserve classification/allocation relationships without creating a second effect.
+- Internal transfer and credit-card-payment pairing changes account projections but not household spending.
+- Data freshness and connection health must qualify or block planning outputs when critical.
 
 ## Development Environments
 

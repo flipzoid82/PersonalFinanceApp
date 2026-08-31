@@ -86,7 +86,7 @@ try {
 
   try {
     Remove-DevRuntimeArtifacts -ProjectRoot $projectRoot -Directory $paths.Directory
-    Write-DevCheck PASS "Cleanup" "Removed workflow PID, state, and temporary log files."
+    Write-DevCheck PASS "Cleanup" "Removed workflow PID, state, and temporary log files while preserving the local import key and retained encrypted sources."
   } catch {
     Remove-Item -LiteralPath $paths.State, $paths.NextStdout, $paths.NextStderr -Force -ErrorAction SilentlyContinue
     Write-DevCheck WARN "Cleanup" "An ignored runtime log is still in use by an external process. State and available logs were removed; stop that process and rerun pnpm dev:stop to remove the remainder."

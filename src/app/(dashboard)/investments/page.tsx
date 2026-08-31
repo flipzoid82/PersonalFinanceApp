@@ -16,6 +16,7 @@ import { Notice } from "@/components/ui/notice";
 import { requireUser } from "@/lib/auth";
 import { fidelityTemplate } from "@/lib/portfolio";
 import { getPortfolioViewModel } from "@/lib/portfolio/server";
+import Link from "next/link";
 
 export default async function InvestmentsPage({
   searchParams,
@@ -43,6 +44,12 @@ export default async function InvestmentsPage({
       </p>
       <PortfolioFeedback message={params.message} error={params.error} />
       <PortfolioSummary portfolio={portfolio} context="investments" />
+      <Link
+        href="/settings/imports?type=FIDELITY_BROKERAGE_STATEMENT"
+        className="mt-4 inline-block font-semibold text-[var(--semantic-info-text)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+      >
+        Import investment statement or holdings
+      </Link>
 
       <section aria-labelledby="investment-accounts-title" className="mt-8">
         <h2 id="investment-accounts-title" className="text-xl font-bold">

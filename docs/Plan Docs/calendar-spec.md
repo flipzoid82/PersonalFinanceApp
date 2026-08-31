@@ -1,59 +1,79 @@
-# Calendar Specification
+# Calendar and Cash-Flow Specification
 
 ## Purpose
 
-The Calendar page helps the user understand when bills, subscriptions, debt payments, and expected income are likely to occur.
+The Calendar helps the owner understand what is expected to happen, when it may happen, which account receives or pays it, and whether the account is projected to have enough money.
 
-## Core Principle
+The existing Calendar is a strong prediction/correction foundation. Household Control 3 extends it into a routed account projection without weakening its existing certainty semantics.
 
-Historical transactions can predict when a charge is likely to post, but they do not always reveal the contractual due date.
+## Core principles
 
-Predicted dates must never be presented as guaranteed due dates.
+- Historical posting patterns may predict activity but do not establish contractual due dates.
+- Predicted dates must never be presented as guaranteed due dates.
+- Expected income is not posted income.
+- A routed obligation is not automatically funded merely because household cash is positive.
+- Transfers affect account balances but are not household spending.
+- Every projection change must have source, date, amount, certainty, and inclusion lineage.
+- No event or commitment may affect a projection twice.
 
-## Views
+## Existing views
 
-### Month View
+### Month view
 
-A traditional monthly calendar showing events on their expected or confirmed dates.
+A calendar grid showing events on their effective predicted or confirmed dates.
 
-### Upcoming List
+### Upcoming list
 
-A chronological list for the next:
+A chronological accessible list for 14, 30, 60, or 90 days. Calendar defaults to 30 days; Home uses the most relevant near-term subset.
 
-- 14 days
-- 30 days
-- 60 days
-- 90 days
+### Future account projection ledger
 
-Default: 30 days on the Calendar page and 14 days on Overview.
+For each opted-in planning account, show a dated sequence of:
 
-## Event Types
+- starting current or authoritative available balance;
+- unreconciled pending outflows when not already reflected;
+- expected income;
+- routed bills and obligations;
+- planned transfer outflows/inflows;
+- projected balance after each event;
+- reserve floor and any breach;
+- confidence/freshness state.
+
+## Event types
 
 - Bill
 - Subscription
 - Debt payment
 - Credit-card payment
 - Expected income
+- Planned/internal transfer
 - Other recurring event
+- Owner-created future obligation
 
-## Event Fields
+Budget and pay-cycle boundaries may appear as context but are not transactions or cash-flow events.
 
-Each event should display:
+## Event fields
 
-- Name
-- Event type
-- Date
-- Date label: predicted or confirmed
-- Expected amount
-- Amount label: fixed, estimated, or last observed
-- Account normally charged or credited
-- Frequency
-- Confidence level
-- Status
-- Last matching transaction
-- Notes
+Each event should retain or ultimately support:
 
-## Statuses
+- name;
+- event type;
+- predicted posting date;
+- confirmed due date, if known;
+- expected amount and amount source;
+- frequency;
+- confidence;
+- status;
+- paying account for obligations;
+- destination account for income;
+- transfer source/destination when applicable;
+- funding status;
+- effect on projected account balance;
+- last matching transaction;
+- source/projection lineage;
+- notes.
+
+## Existing statuses
 
 - Predicted
 - Confirmed
@@ -63,104 +83,129 @@ Each event should display:
 - Needs confirmation
 - Inactive
 
-## Prediction Inputs
+These describe Calendar occurrence state and remain distinct from funding status.
 
-The recurring engine may consider:
+## Funding statuses
 
-- Merchant similarity
-- Transaction description similarity
-- Historical interval consistency
-- Typical day of month
-- Amount stability
-- Category
-- Account charged
-- Weekend and holiday shifts
-- Recent schedule changes
+- **Funded**
+- **Expected to be funded by income**
+- **Transfer required**
+- **At risk**
+- **Unfunded**
+- **Uncertain**
 
-## Confidence Levels
+Funding state must identify the paying account, projected balance, reserve floor, relevant date, and assumptions.
 
-### High
+## Date semantics
 
-Use when multiple occurrences show a consistent merchant, interval, and date pattern.
+### Predicted posting date
 
-### Medium
+An inferred date based on historical posting behavior.
 
-Use when the pattern is likely recurring but has date or amount variability.
+### Confirmed due date
 
-### Low
+An owner-confirmed or reliable contractual date. When both dates exist, show confirmed due date as primary and predicted posting date as supplemental context.
 
-Use when there are too few occurrences or substantial inconsistency.
+### Pay-cycle boundary
 
-### Needs Confirmation
+A planning boundary derived from an eligible expected-income event. It defines a useful projection/Safe-to-Spend horizon but does not itself create income.
 
-Use when the system cannot safely distinguish a bill from another repeated transaction.
+All owner-facing period boundaries use the owner's configured planning time zone. Provider instants and contractual date-only values remain unchanged at their source boundary.
 
-## Due Date vs Posting Date
+## Prediction and confidence
 
-The UI should support both:
+Recurring detection may use merchant/description similarity, interval consistency, typical day, amount stability, category, account, weekend/holiday drift, and recent continuity.
 
-- Confirmed due date
-- Predicted posting date
+Confidence remains High, Medium, Low, or Needs confirmation. The exact threshold for including uncertain recurring events as future commitments remains to be resolved in Household Control 3.
 
-When both exist, display the confirmed due date prominently and the predicted posting date as supplemental context.
+Low-confidence or ambiguous activity must not silently become a hard commitment. A projected/estimated event remains labeled throughout Bills, Calendar, funding, and Safe-to-Spend.
 
-## Manual Actions
+## Account routing
 
-The user can:
+### Income destination
 
-- Confirm a predicted bill
-- Change the due date
-- Change the expected amount
-- Change frequency
-- Mark as paid
-- Mark as skipped
-- Mark as not a bill
-- Deactivate a recurring stream
-- Add a manual recurring event
+Every expected income event included in account projections requires a destination planning account.
 
-## Paid Matching
+### Obligation payment account
 
-When a posted transaction appears, the system should attempt to match it to an event using:
+Every obligation included in funding analysis requires the planning account expected to pay it. Missing routing produces Uncertain, not a fabricated funded state.
 
-- Merchant
-- Amount tolerance
-- Account
-- Date proximity
-- Recurring stream identity
+### Planned transfer
 
-Low-confidence matches require confirmation.
+A planned transfer includes source account, destination account, amount, required date, state, and reason. It is a recommendation plus owner acknowledgment only and never initiates money movement.
 
-## Overdue Rules
+Both legs enter their account projections exactly once. The transfer does not enter household income/spending.
 
-An event may be marked overdue only when:
+## Projection starting balance and pending treatment
 
-- It has a confirmed due date, and
-- No matching payment has been found, and
-- The due date has passed
+For an eligible planning account:
 
-Predicted-only events should not be labeled overdue by default.
+1. use a fresh institution available balance when it is authoritative; otherwise
+2. use current balance minus unreconciled pending outflows.
 
-## Filters
+Never subtract a pending outflow twice. Pending income does not increase current Safe-to-Spend. An eligible separately modeled expected-income event may enter a future projection according to its confidence policy.
 
-- Bills
-- Subscriptions
-- Debt payments
-- Credit-card payments
-- Expected income
-- Confirmed only
-- Predicted only
-- Needs confirmation
+## Paid matching and commitment release
 
-## Empty States
+When a posted transaction appears, the system may match it to one compatible event using stream identity, owner/account, currency, role/direction, amount, and date proximity.
 
-- No history yet
+- Pending, canceled, or removed transactions cannot mark an event paid.
+- One posted transaction may satisfy at most one occurrence.
+- Ambiguous matches require owner confirmation.
+- A matched event releases/reconciles its future commitment so it is not subtracted again.
+- A credit-card payment affects cash projection but does not duplicate the original card-purchase spending.
+
+## Overdue rules
+
+An event may be overdue only when:
+
+- it has a confirmed due date;
+- no matching payment has been found;
+- it is not skipped/inactive; and
+- the confirmed due date has passed.
+
+Predicted-only events are not overdue by default.
+
+## Manual actions
+
+Existing actions remain:
+
+- confirm a predicted event;
+- change due date, expected amount, or frequency;
+- mark paid or skipped;
+- mark not a bill;
+- deactivate a recurring stream;
+- add a manual recurring/future event.
+
+Future Household Control actions add:
+
+- choose income destination account;
+- choose obligation payment account;
+- set/review planning-account reserve floor;
+- acknowledge or edit a planned transfer;
+- inspect projection lineage and funding state.
+
+## Filters and context
+
+Retain filters for bills, subscriptions, debt payments, credit-card payments, expected income, confirmed/predicted, and needs confirmation. Future views may add planning account, funding state, pay cycle, and transfer-required filters.
+
+## Empty, partial, and uncertain states
+
+- No transaction history
 - No recurring patterns detected
-- No upcoming events in selected range
+- No upcoming events in range
+- Missing account routing
+- Planning account unavailable or stale
+- Amount/date uncertain
+- Transfer source unavailable
 - All predicted items dismissed
+
+Partial data should remain useful with explicit confidence. Missing critical routing or balance data produces Uncertain rather than false precision.
 
 ## Accessibility
 
-- Do not rely on color alone
-- Use text labels and icons for status
-- Ensure keyboard navigation
-- Provide list view as an accessible alternative to the month grid
+- Never rely on color alone.
+- Preserve explicit Predicted, Confirmed, Paid, and funding-status labels.
+- Keep month and list alternatives keyboard accessible.
+- Make projection lineage available as text/table, not chart only.
+- Preserve visible focus, responsive containment, and Light/Dark/System readability.
