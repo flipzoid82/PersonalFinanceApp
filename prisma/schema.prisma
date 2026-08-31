@@ -175,13 +175,52 @@ enum ImportType {
   FIDELITY_TRANSACTIONS_CSV
   MANUAL_BALANCE_SNAPSHOT
   GENERIC_ACCOUNT_BALANCE_CSV
+  GENERIC_INVESTMENT_HOLDINGS_CSV
+  FIDELITY_NETBENEFITS_STATEMENT
+  FIDELITY_BROKERAGE_STATEMENT
+  FIDELITY_TRADE_CONFIRMATION
+  TSP_STATEMENT
 }
 
 enum ImportStatus {
   PENDING
   PROCESSING
+  NEEDS_REVIEW
+  READY
   COMPLETED
   PARTIAL
+  FAILED
+  CANCELED
+  REVERTED
+}
+
+enum ImportCandidateKind {
+  BALANCE_SNAPSHOT
+  INVESTMENT_BALANCE_SNAPSHOT
+  HOLDING
+  INVESTMENT_TRANSACTION
+  INFORMATIONAL
+}
+
+enum ImportCandidateStatus {
+  READY
+  DUPLICATE
+  NEEDS_REVIEW
+  REJECTED
+  INFORMATIONAL
+  SKIPPED
+}
+
+enum ImportAccountMatchStatus {
+  MATCHED
+  NEEDS_REVIEW
+  CREATE
+}
+
+enum ImportSourceStatus {
+  RETAINED
+  DELETED
+  MISSING
   FAILED
 }
 
@@ -321,6 +360,10 @@ model Account {
   investmentSnapshots     InvestmentBalanceSnapshot[]
   investmentTransactions  InvestmentTransaction[]
   balanceSnapshots        BalanceSnapshot[]
+  importAccountMatches    ImportAccountMatch[]
+  matchedImportJobs       ImportJob[]                 @relation("ImportMatchedAccount")
+  createdByImportJobId    String?                     @map("created_by_import_job_id")
+  createdByImportJob      ImportJob?                  @relation("ImportCreatedAccounts", fields: [createdByImportJobId], references: [id], onDelete: NoAction)
   providerAccountLinks    ProviderAccountLink[]
   createdAt               DateTime                    @default(now()) @map("created_at")
   updatedAt               DateTime                    @updatedAt @map("updated_at")
@@ -331,6 +374,7 @@ model Account {
   @@index([userId, accountType, isActive])
   @@index([institutionConnectionId])
   @@index([institutionName])
+  @@index([createdByImportJobId])
   @@map("accounts")
 }
 
@@ -531,48 +575,58 @@ model CalendarOverride {
 }
 
 model InvestmentHolding {
-  id             String           @id @default(cuid())
-  userId         String           @map("user_id")
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId      String           @map("account_id")
-  account        Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
-  source         InvestmentSource
-  securityName   String           @map("security_name")
-  tickerSymbol   String?          @map("ticker_symbol")
-  securityType   String?          @map("security_type")
-  quantity       Decimal?         @db.Decimal(28, 10)
-  price          Decimal?         @db.Decimal(19, 4)
-  currentValue   Decimal          @map("current_value") @db.Decimal(19, 4)
-  costBasis      Decimal?         @map("cost_basis") @db.Decimal(19, 4)
-  vestedQuantity Decimal?         @map("vested_quantity") @db.Decimal(28, 10)
-  vestedValue    Decimal?         @map("vested_value") @db.Decimal(19, 4)
-  currency       String           @default("USD") @db.Char(3)
-  asOfDate       DateTime         @map("as_of_date")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id                String           @id @default(cuid())
+  userId            String           @map("user_id")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId         String           @map("account_id")
+  account           Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  source            InvestmentSource
+  securityName      String           @map("security_name")
+  tickerSymbol      String?          @map("ticker_symbol")
+  securityType      String?          @map("security_type")
+  quantity          Decimal?         @db.Decimal(28, 10)
+  price             Decimal?         @db.Decimal(19, 4)
+  currentValue      Decimal          @map("current_value") @db.Decimal(19, 4)
+  costBasis         Decimal?         @map("cost_basis") @db.Decimal(19, 4)
+  vestedQuantity    Decimal?         @map("vested_quantity") @db.Decimal(28, 10)
+  vestedValue       Decimal?         @map("vested_value") @db.Decimal(19, 4)
+  currency          String           @default("USD") @db.Char(3)
+  asOfDate          DateTime         @map("as_of_date")
+  importJobId       String?          @map("import_job_id")
+  importJob         ImportJob?       @relation(fields: [importJobId], references: [id], onDelete: NoAction)
+  importIdentityKey String?          @map("import_identity_key") @db.VarChar(64)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
+  @@unique([userId, importIdentityKey])
   @@index([userId])
   @@index([accountId, asOfDate])
   @@index([tickerSymbol])
+  @@index([importJobId])
   @@map("investment_holdings")
 }
 
 model InvestmentBalanceSnapshot {
-  id          String           @id @default(cuid())
-  userId      String           @map("user_id")
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId   String           @map("account_id")
-  account     Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
-  totalValue  Decimal          @map("total_value") @db.Decimal(19, 4)
-  vestedValue Decimal?         @map("vested_value") @db.Decimal(19, 4)
-  source      InvestmentSource
-  asOfDate    DateTime         @map("as_of_date")
-  notes       String?
-  createdAt   DateTime         @default(now()) @map("created_at")
+  id                String           @id @default(cuid())
+  userId            String           @map("user_id")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId         String           @map("account_id")
+  account           Account          @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  totalValue        Decimal          @map("total_value") @db.Decimal(19, 4)
+  vestedValue       Decimal?         @map("vested_value") @db.Decimal(19, 4)
+  source            InvestmentSource
+  asOfDate          DateTime         @map("as_of_date")
+  notes             String?
+  importJobId       String?          @map("import_job_id")
+  importJob         ImportJob?       @relation(fields: [importJobId], references: [id], onDelete: NoAction)
+  importIdentityKey String?          @map("import_identity_key") @db.VarChar(64)
+  createdAt         DateTime         @default(now()) @map("created_at")
 
   @@unique([accountId, source, asOfDate])
+  @@unique([userId, importIdentityKey])
   @@index([userId])
   @@index([accountId, asOfDate])
+  @@index([importJobId])
   @@map("investment_balance_snapshots")
 }
 
@@ -594,13 +648,18 @@ model InvestmentTransaction {
   fees                            Decimal?                  @db.Decimal(19, 4)
   currency                        String                    @default("USD") @db.Char(3)
   rawPayload                      Json?                     @map("raw_payload")
+  importJobId                     String?                   @map("import_job_id")
+  importJob                       ImportJob?                @relation(fields: [importJobId], references: [id], onDelete: NoAction)
+  importIdentityKey               String?                   @map("import_identity_key") @db.VarChar(64)
   createdAt                       DateTime                  @default(now()) @map("created_at")
   updatedAt                       DateTime                  @updatedAt @map("updated_at")
 
   @@unique([accountId, providerInvestmentTransactionId])
+  @@unique([userId, importIdentityKey])
   @@index([userId])
   @@index([accountId, transactionDate])
   @@index([tickerSymbol])
+  @@index([importJobId])
   @@map("investment_transactions")
 }
 
@@ -626,37 +685,122 @@ model ManualAsset {
 }
 
 model BalanceSnapshot {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId        String   @map("account_id")
-  account          Account  @relation(fields: [accountId], references: [id], onDelete: NoAction)
-  currentBalance   Decimal  @map("current_balance") @db.Decimal(19, 4)
-  availableBalance Decimal? @map("available_balance") @db.Decimal(19, 4)
-  capturedAt       DateTime @map("captured_at")
+  id                String     @id @default(cuid())
+  userId            String     @map("user_id")
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId         String     @map("account_id")
+  account           Account    @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  currentBalance    Decimal    @map("current_balance") @db.Decimal(19, 4)
+  availableBalance  Decimal?   @map("available_balance") @db.Decimal(19, 4)
+  capturedAt        DateTime   @map("captured_at")
+  importJobId       String?    @map("import_job_id")
+  importJob         ImportJob? @relation(fields: [importJobId], references: [id], onDelete: NoAction)
+  importIdentityKey String?    @map("import_identity_key") @db.VarChar(64)
 
   @@unique([accountId, capturedAt])
+  @@unique([userId, importIdentityKey])
   @@index([userId])
   @@index([accountId, capturedAt(sort: Desc)])
+  @@index([importJobId])
   @@map("balance_snapshots")
 }
 
 model ImportJob {
-  id               String       @id @default(cuid())
-  userId           String       @map("user_id")
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dataSourceId     String       @map("data_source_id")
-  dataSource       DataSource   @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
-  sourceName       String       @map("source_name")
-  importType       ImportType   @map("import_type")
-  status           ImportStatus @default(PENDING)
-  importedRowCount Int          @default(0) @map("imported_row_count")
-  rejectedRowCount Int          @default(0) @map("rejected_row_count")
-  createdAt        DateTime     @default(now()) @map("created_at")
-  completedAt      DateTime?    @map("completed_at")
+  id                     String                      @id @default(cuid())
+  userId                 String                      @map("user_id")
+  user                   User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSourceId           String                      @map("data_source_id")
+  dataSource             DataSource                  @relation(fields: [dataSourceId], references: [id], onDelete: NoAction)
+  sourceName             String                      @map("source_name")
+  sourceContentType      String?                     @map("source_content_type")
+  sourceSize             Int?                        @map("source_size")
+  fileFingerprint        String?                     @map("file_fingerprint") @db.Char(64)
+  importType             ImportType                  @map("import_type")
+  status                 ImportStatus                @default(PENDING)
+  parserFamily           String?                     @map("parser_family")
+  parserVersion          String?                     @map("parser_version")
+  statementStartAt       DateTime?                   @map("statement_start_at") @db.Date
+  statementEndAt         DateTime?                   @map("statement_end_at") @db.Date
+  asOfDate               DateTime?                   @map("as_of_date")
+  currency               String?                     @db.Char(3)
+  planVersion            Int?                        @map("plan_version")
+  planFingerprint        String?                     @map("plan_fingerprint") @db.Char(64)
+  planData               Json?                       @map("plan_data")
+  sourceStorageKey       String?                     @map("source_storage_key") @db.VarChar(80)
+  sourceStatus           ImportSourceStatus?         @map("source_status")
+  sourceRetainUntil      DateTime?                   @map("source_retain_until")
+  sourceDeletedAt        DateTime?                   @map("source_deleted_at")
+  matchedAccountId       String?                     @map("matched_account_id")
+  matchedAccount         Account?                    @relation("ImportMatchedAccount", fields: [matchedAccountId], references: [id], onDelete: NoAction)
+  importedRowCount       Int                         @default(0) @map("imported_row_count")
+  duplicateRowCount      Int                         @default(0) @map("duplicate_row_count")
+  rejectedRowCount       Int                         @default(0) @map("rejected_row_count")
+  reviewRowCount         Int                         @default(0) @map("review_row_count")
+  informationalRowCount  Int                         @default(0) @map("informational_row_count")
+  failureCode            String?                     @map("failure_code")
+  accountMatches         ImportAccountMatch[]
+  candidates             ImportCandidate[]
+  createdAccounts        Account[]                   @relation("ImportCreatedAccounts")
+  balanceSnapshots       BalanceSnapshot[]
+  investmentSnapshots    InvestmentBalanceSnapshot[]
+  investmentHoldings     InvestmentHolding[]
+  investmentTransactions InvestmentTransaction[]
+  createdAt              DateTime                    @default(now()) @map("created_at")
+  updatedAt              DateTime                    @default(now()) @updatedAt @map("updated_at")
+  completedAt            DateTime?                   @map("completed_at")
+  revertedAt             DateTime?                   @map("reverted_at")
 
   @@index([userId])
   @@index([dataSourceId])
   @@index([userId, status, createdAt])
+  @@index([userId, fileFingerprint])
+  @@index([sourceStatus, sourceRetainUntil])
   @@map("import_jobs")
+}
+
+model ImportAccountMatch {
+  id               String                   @id @default(cuid())
+  importJobId      String                   @map("import_job_id")
+  importJob        ImportJob                @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  sourceKey        String                   @map("source_key")
+  displayName      String                   @map("display_name")
+  institutionName  String?                  @map("institution_name")
+  maskedIdentifier String?                  @map("masked_identifier")
+  accountType      AccountType              @map("account_type")
+  accountSubtype   String?                  @map("account_subtype")
+  currency         String                   @db.Char(3)
+  status           ImportAccountMatchStatus
+  matchedAccountId String?                  @map("matched_account_id")
+  matchedAccount   Account?                 @relation(fields: [matchedAccountId], references: [id], onDelete: NoAction)
+  reason           String?
+  candidates       ImportCandidate[]
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+
+  @@unique([importJobId, sourceKey])
+  @@index([matchedAccountId])
+  @@map("import_account_matches")
+}
+
+model ImportCandidate {
+  id                String                @id @default(cuid())
+  importJobId       String                @map("import_job_id")
+  importJob         ImportJob             @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  accountMatchId    String?               @map("account_match_id")
+  accountMatch      ImportAccountMatch?   @relation(fields: [accountMatchId], references: [id], onDelete: NoAction)
+  ordinal           Int
+  kind              ImportCandidateKind
+  status            ImportCandidateStatus
+  sourceFingerprint String                @map("source_fingerprint") @db.Char(64)
+  sourceLabel       String?               @map("source_label")
+  proposedData      Json?                 @map("proposed_data")
+  evidence          Json
+  reviewReason      String?               @map("review_reason")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  @@unique([importJobId, sourceFingerprint])
+  @@index([importJobId, status, ordinal])
+  @@index([accountMatchId])
+  @@map("import_candidates")
 }

@@ -1,257 +1,243 @@
 # Product Requirements
 
-## Product Summary
+## Product purpose
 
-A single-user, private personal-finance web app that provides an at-a-glance view of accounts, balances, debt, spending, bills, cash flow, investments, bill timing, and net worth.
+The application is an owner-only household financial control system. It helps the owner understand what happened, what is happening, what is about to happen, and what the household can safely do next.
 
-## Primary User
+The product's north-star question is:
 
-The app is designed for one person using their own financial data. Multi-user access, household sharing, invitations, and role permissions are outside the MVP.
+> **What can we safely spend right now without creating a problem later?**
 
-## Primary Questions the App Must Answer
+The app must be more than a passive transaction ledger or wealth dashboard. It should combine reviewed transaction meaning, realistic budgets, upcoming income and obligations, account routing, protected reserves, and data confidence into timely, explainable decisions.
 
-1. How much cash is available?
-2. How much debt is outstanding?
-3. What bills are coming up and when?
-4. Where is money being spent?
-5. What are the user's investments worth?
-6. Is the user's financial position improving or getting worse?
+## V1 user and security boundary
 
-## MVP Navigation
+Safe-to-Spend V1 remains private and owner-only.
 
-- Overview
-- Accounts
-- Transactions
-- Bills
-- Calendar
-- Spending
-- Investments
-- Net Worth
-- Settings
+- One authenticated owner controls all financial data, planning choices, corrections, and acknowledgments.
+- Multi-user household authorization, invitations, shared permissions, and member-specific visibility are later capabilities.
+- “Household” describes the financial plan and outcome; it does not imply that multiple people can sign in during V1.
+- The app remains read-only with respect to financial institutions. Transfer recommendations do not initiate money movement.
 
-## MVP Data Sources
+## Four awareness states
 
-The first version should support a mix of automatic, manual, and imported data sources.
+The application should continuously answer:
 
-### Automatic via Plaid
+1. **What happened** — posted income, spending, transfers, refunds, and corrections.
+2. **What is happening** — pending activity, current budget health, unresolved transactions, and current data freshness.
+3. **What is about to happen** — expected income, bills, transfers, projected balances, and funding gaps.
+4. **What can safely be done next** — explainable Safe-to-Spend and the actions or uncertainties that affect it.
 
-Plaid is the primary provider for supported banks, credit cards, and loans.
+## Primary owner outcomes
 
-Expected Plaid-connected institutions:
+The first useful household-control version must answer:
 
-- Navy Federal Credit Union
-- CIT Bank
-- U.S. Bank
+1. Where did my money go?
+2. What needs attention?
+3. How much is left in each budget?
+4. Am I spending too fast?
+5. What income and bills are next?
+6. Which account receives or pays each item?
+7. Will that account have enough?
+8. Do I need to move money?
+9. What can I safely spend?
+10. Why is that the number?
 
-### Manual or Imported Fidelity Data
+## Product principles
 
-Fidelity and Fidelity NetBenefits should not be assumed to work through Plaid.
+### Awareness before analysis
 
-The MVP must support Fidelity investment accounts through manual balance tracking and CSV or statement import.
+Important constraints and upcoming problems should be visible without requiring the owner to interpret a collection of charts.
 
-Known Fidelity accounts to support:
+### Forward-looking and account-specific
 
-- Fidelity Individual TOD
-- UnitedHealth Contribution
-- UnitedHealth Group 401(k) Savings Plan
+Historical reporting is necessary but insufficient. Upcoming activity must be routed to the account that receives or pays it so the app can identify a local funding problem even when total household cash appears adequate.
 
-Automatic Fidelity syncing is a future enhancement unless an approved provider is confirmed.
+### Money in an account is not necessarily available money
 
-### Manual Assets and Debts
+The product must distinguish current balance, authoritative available balance, pending activity, future commitments, account and household reserve floors, and money that is genuinely safe to spend.
 
-The MVP should support manual entry for assets and debts that are not available through Plaid or import.
+### Transaction truth before confident recommendations
 
-Examples:
+Provider data is useful source evidence, not unquestioned financial meaning. The app must preserve source data, derive one auditable effective classification, ask for review when material uncertainty remains, and let owner corrections win.
 
-- Home value
-- Vehicles
-- Mortgage
-- Private loans
-- Other manually tracked assets or debts
+### Useful under partial uncertainty
 
-## Overview Requirements
+Minor unresolved activity should not make the product unusable. Safe-to-Spend may be shown with explicit coverage and reduced confidence when unresolved activity is immaterial. Critical stale, incomplete, unsupported-currency, or materially unresolved inputs must fail closed rather than create false precision.
 
-The Overview page should display:
+### Explainability
 
-- Net worth
-- Total cash
-- Available cash
-- Total debt
-- Credit utilization
-- Total investments
-- Income this month
-- Spending this month
-- Net cash flow
-- Upcoming bills
-- Recent transactions
-- Spending by category
-- Account sync status
-- Data freshness indicators
+Every budget state, projection, funding warning, and Safe-to-Spend result must identify the balances, transactions, obligations, income events, transfers, reserves, assumptions, freshness, and confidence that produced it.
 
-## Recommended Overview Layout
+### No double counting
 
-### Top Row
+Transfers, credit-card payments, pending-to-posted replacements, refunds, budget allocations, and Calendar commitments must be reconciled so the same economic activity is never counted twice.
 
-- Net Worth
-- Cash
-- Credit Card Debt
-- Investments
+## Household-control capabilities
 
-### Second Row
+### Connected accounts and normalized activity
 
-- Income This Month
-- Spending This Month
-- Net Cash Flow
-- Upcoming Bills
+Plaid remains the primary provider for supported checking, savings, credit-card, and loan accounts. The app must preserve provider identifiers and values, reconcile pending and posted activity, retain disconnected history, prevent duplicate logical accounts, and clearly communicate freshness.
 
-### Main Content
+The owner opts specific checking and savings accounts into household planning. Investments, credit capacity, property, and unrelated debt capacity are never spendable cash.
 
-- Net Worth Trend
-- Account Balances
-- Recent Transactions
-- Spending by Category
-- Upcoming Activity
-- Data Freshness and Connection Status
+### Transaction truth and review
 
-## Accounts Requirements
+Every reportable transaction should have one effective classification with provenance and confidence:
 
-The Accounts page should support:
+- merchant or description;
+- household category;
+- financial role, including income, expense, transfer, refund or reimbursement, credit-card payment, investment activity, debt payment, ignored, or unresolved;
+- pending, posted, or canceled status;
+- whether it is linked to another movement or refund;
+- whether it has split category allocations;
+- whether owner review is required.
 
-- Checking
-- Savings
-- Credit cards
-- Loans
-- Investment accounts
-- 401(k) accounts
-- Mortgage
-- Property
-- Vehicles
-- Other assets and debts
+High-confidence deterministic classifications may enter live totals automatically. Low-confidence, conflicting, ambiguous, high-impact, or structurally uncertain transactions enter a lightweight Transaction Inbox. Owner corrections always take precedence without mutating provider data.
 
-Each account should show:
+The Inbox must support role/category review, exact split allocations, transfer and card-payment pairing, refund/reimbursement linkage, exclusion, and narrowly scoped deterministic rules for future similar activity.
 
-- Account name
-- Institution or data source
-- Account type
-- Current balance
-- Available balance where applicable
-- Credit limit where applicable
-- Last updated time
-- Connection or import status
-- Recent activity where available
+### Budgets and live category health
 
-## Transactions Requirements
+V1 supports stable household budget categories and monthly allocations in the owner's configured planning time zone.
 
-The Transactions page should support:
+For each category, show:
 
-- Search by merchant or description
-- Filters for date, account, category, amount, and status
-- Pending and posted indicators
-- Transfer indicators
-- Notes
-- Category overrides
-- Financial-role overrides
-- Exclusion from reporting
+- allocated amount;
+- posted spending and linked refunds/reimbursements;
+- amount remaining;
+- percentage consumed;
+- time remaining;
+- weekly spending pace derived from the monthly plan;
+- projected end-of-period spending and projected over/under amount;
+- classification coverage and confidence;
+- transactions that produced the result.
 
-## Bills Requirements
+Allocations may be fixed, flexible, or protected. Reallocation between flexible categories is explicit and auditable. Rollover is explicit initially, not automatic. Arbitrary custom budget calendars are outside V1.
 
-The Bills page should show:
+### Recurring income and expenses
 
-- Active recurring outflows
-- Predicted next charge date
-- Confirmed due date where available
-- Typical amount
-- Frequency
-- Merchant or biller
-- Account charged
-- Active or inactive status
-- Prediction confidence
-- Expected income in a separate section
+The existing recurring engine remains the basis for expected income, bills, subscriptions, debt payments, credit-card payments, and recurring transfers.
 
-## Calendar Requirements
+Recurring items retain typical and expected amounts, frequency and expected date, prediction confidence, predicted posting date versus confirmed due date, active/inactive and review state, and owner correction precedence.
 
-The Calendar page should provide:
+Predicted activity must never be presented as guaranteed. Low-confidence or ambiguous recurrence must not silently become a hard commitment.
 
-- Month view
-- Upcoming-list view
-- Predicted bills based on historical transaction patterns
-- Confirmed due dates entered by the user
-- Expected charge amounts
-- Predicted versus confirmed labels
-- Confidence levels
-- Paid, overdue, skipped, and needs-confirmation states
-- Filters for bills, subscriptions, debt payments, and expected income
-- Manual corrections for date and amount
-- A distinction between contractual due dates and historically observed posting dates
+### Routed financial Calendar
 
-The calendar must never present inferred dates as guaranteed due dates.
+The Calendar should identify:
 
-## Spending Requirements
+- the account expected to receive each income event;
+- the account expected to pay each obligation;
+- planned internal transfers and their source/destination accounts;
+- budget and pay-cycle boundaries;
+- current and projected balance changes by account;
+- the source and certainty of each projected change.
 
-The Spending page should show:
+Existing predicted-versus-confirmed, due-date-versus-posting-date, matching, paid, skipped, and overdue semantics remain authoritative.
 
-- Spending by category
-- Monthly comparisons
-- Income versus expenses
-- Merchant totals
-- Largest purchases
-- Unusual spending
-- Monthly trends
+### Projected balances and funding status
 
-## Investments Requirements
+For each opted-in planning account, the app should project balances across upcoming dated activity using exact money arithmetic and an explicit pending-activity policy.
 
-The Investments page should show:
+Every upcoming obligation should have one of these funding states:
 
-- Total investment value
-- Investment accounts
-- Holdings where available
-- Manual balance snapshots
-- Imported Fidelity balances and holdings
-- Allocation by account or holding where available
-- Contribution activity where available
-- Whether each value is synced, imported, or manually entered
+- Funded
+- Expected to be funded by income
+- Transfer required
+- At risk
+- Unfunded
+- Uncertain
 
-The MVP does not need to support trading, retirement projections, tax optimization, or investment advice.
+A positive household total must not conceal an account-specific shortfall. Transfer recommendations identify a source, destination, amount, and required date, but movement remains an explicit owner action.
 
-## Net Worth Requirements
+### Safe-to-Spend
 
-The Net Worth page should combine:
+Safe-to-Spend is the product's north-star output. It answers how much can be spent during a stated horizon without compromising routed obligations, protected reserves, or the household budget.
 
-- Cash accounts
-- Investments
-- Property
-- Vehicles
-- Other assets
-- Credit cards
-- Mortgage
-- Loans
-- Other debts
+V1 supports household Safe-to-Spend, account-level projected discretionary capacity, Safe-to-Spend until the next relevant income event, a proposed-purchase check, and a complete explanation of available cash, commitments, reserves, budget allowances, planned transfers, unresolved coverage, freshness, and confidence.
 
-It should show current net worth and historical change.
+The calculation must use only opted-in USD planning accounts. Non-USD activity may remain visible but must not silently enter the consolidated result.
 
-## Product Principles
+If unresolved classification or split coverage is not material, the app may show a useful number with clear qualification, for example:
 
-- Read-only with respect to financial institutions
-- Private by default
-- Clear data freshness indicators
-- Pending transactions handled separately
-- Transfers not double-counted
-- Credit-card payments not counted as spending
-- Investments included in net worth
-- Inferred bill dates clearly labeled as predictions
-- Useful even when some accounts are disconnected
-- User overrides stored separately from provider data
-- Provider-specific integrations hidden behind a normalized internal model
+> Safe to spend: $640<br>
+> Based on 97% classified spending. Two transactions totaling $84 still need review.
 
-## Out of Scope for MVP
+If critical data is stale, account routing is missing, or unresolved activity is material, the app must withhold or qualify the number and explain what must be resolved.
 
-- Tax preparation
-- Bill payment
-- Money transfers
-- Automated investing
-- Full accounting or bookkeeping
-- Shared household accounts
-- AI financial advice
-- Credit-score monitoring
-- Advanced forecasting
-- Direct Fidelity Access integration unless approval is already confirmed
+### Freshness, confidence, and lineage
+
+The owner must be able to distinguish institution current versus available balance, pending versus posted transaction, expected versus posted income, predicted versus confirmed obligation, fresh versus stale account data, reviewed versus inferred classification, and complete versus partial calculation coverage.
+
+No recommendation may present estimated, stale, or incomplete inputs as certain.
+
+## Future Home / Today direction
+
+The primary future landing experience should emphasize:
+
+1. Safe to Spend
+2. Actions needed
+3. Upcoming income and bills
+4. Budget health and spending pace
+5. Funding gaps and transfer needs
+6. Transactions needing review
+7. Freshness, confidence, and calculation coverage
+
+Longer-term wealth and net-worth information remains available but secondary to near-term household control.
+
+## Intended future information architecture
+
+The intended direction is:
+
+1. **Home** — Safe-to-Spend, actions, upcoming activity, budget health, and confidence.
+2. **Transactions** — Transaction Inbox and complete ledger.
+3. **Plan** — budgets, bills, Calendar, cash-flow projections, and funding gaps.
+4. **Accounts** — balances, connection health, planning participation, routing, and reserves.
+5. **Wealth** — Investments and Net Worth.
+6. **Settings** — connections, imports, theme, session, and preferences.
+
+Existing routes remain valid until a separately approved implementation milestone changes navigation.
+
+## Secondary retained capabilities
+
+### Investments and Net Worth
+
+Investment accounts, holdings, balance snapshots, contribution activity, allocation, current net worth, and historical net-worth views remain supported. They are valuable long-term context but do not increase Safe-to-Spend.
+
+The product does not provide trading, tax optimization, retirement advice, or investment recommendations.
+
+### Imports
+
+Milestone 11 statement/CSV imports remain secondary Settings functionality. Milestone 11 is stabilized, checkpointed, and frozen; retained, secondary, Settings-based, independent of Household Control milestones, and not a prerequisite for Household Control 1. Do not add document families or expand import scope.
+
+### Manual assets and debts
+
+Manual property, vehicles, assets, mortgages, loans, debts, accounts, and snapshots remain available for wealth reporting. They do not become spendable cash unless represented by an opted-in liquid planning account.
+
+## Later capabilities
+
+The following follow the first useful Safe-to-Spend version:
+
+- in-app warning records and lifecycle;
+- budget-pace, reserve, funding, and stale-data warnings;
+- weekly household digest;
+- external warning delivery after scheduler and security design;
+- household membership, permissions, and privacy-safe summaries;
+- sinking funds and irregular-expense reserves;
+- debt and savings goals;
+- explicit scenario tradeoffs and surplus allocation;
+- deeper forecasting and recommendations.
+
+## Out of scope through Safe-to-Spend V1
+
+- multi-user household authentication or invitations;
+- automated bank transfers or bill payments;
+- automatic budget rollover;
+- arbitrary custom budget calendars;
+- ML/AI financial classification or advice;
+- multi-currency conversion in consolidated planning;
+- push/email delivery before operational scheduling and security approval;
+- tax preparation, bookkeeping, trading, or automated investing;
+- stochastic long-range forecasting;
+- new Milestone 11 document families or parser expansion.

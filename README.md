@@ -12,7 +12,7 @@ A private, single-owner personal finance dashboard. Milestone 7 adds determinist
 
 1. Install dependencies: `pnpm install`
 2. Copy `.env.example` to `.env`.
-3. Replace `AUTH_SECRET` with at least 32 random characters and `TOKEN_ENCRYPTION_KEY` with 64 random hexadecimal characters. For Plaid Sandbox, also set the five `PLAID_*` variables described below. Do not commit `.env`.
+3. Replace `AUTH_SECRET` with at least 32 random characters and `TOKEN_ENCRYPTION_KEY` with 64 random hexadecimal characters. For Plaid Sandbox, set the five `PLAID_*` variables described below. `pnpm dev:start` safely provisions the dedicated local import key described below; production and direct `pnpm dev` operation require an explicit `IMPORT_FILE_ENCRYPTION_KEY`. Do not commit `.env`.
 4. Start PostgreSQL: `docker compose up -d postgres`
 5. Generate Prisma Client: `pnpm db:generate`
 6. Apply migrations: `pnpm db:migrate`
@@ -46,8 +46,11 @@ Desktop. The workflow then waits for database health, generates Prisma Client,
 safely applies checked-in pending migrations, starts or reuses only this
 project's Next.js development server, waits for `/login`, and opens
 `http://localhost:3000/login`. It does not install dependencies, reset or seed
-the database, edit `.env`, or enter owner credentials. Login always remains
-manual.
+the database, edit `.env`, or enter owner credentials. When no explicit import
+key exists, it generates a cryptographically random development-only key in
+ignored `.dev-runtime/import-file-encryption.key`, passes it only to this
+project's server process, and reuses it across normal stop/start cycles. The
+key value is never printed. Login always remains manual.
 
 Use the supporting commands as follows:
 
@@ -56,8 +59,9 @@ Use the supporting commands as follows:
   connection-string passwords.
 - `pnpm dev:stop` stops only a process tree that is verified as this project's
   Next.js server. It also stops ngrok only when this workflow started it,
-  removes ignored runtime state/log files, and intentionally leaves both
-  PostgreSQL and Docker Desktop running.
+  removes ignored runtime state/log files, preserves the local import key and
+  retained encrypted import sources, and intentionally leaves both PostgreSQL
+  and Docker Desktop running.
 - `pnpm dev:start:plaid` adds Plaid Sandbox and encryption-key-shape checks,
   automatically starts ngrok when it is installed but stopped, waits for an
   HTTPS tunnel, and compares its host with `PLAID_WEBHOOK_URL`. A mismatch
@@ -70,8 +74,9 @@ records it for a safe later `dev:stop`. Use
 `pnpm dev:start -Restart` to request a verified restart. If a stale state
 file remains after a crash, `pnpm dev:stop` revalidates the saved PID and
 process start time before acting; it refuses PID reuse and unrelated Node
-processes. Runtime state and logs live under ignored `.dev-runtime/` and are
-removed on shutdown.
+processes. Ephemeral runtime state and logs live under ignored `.dev-runtime/`
+and are removed on shutdown. The development import key and retained encrypted
+sources in that same ignored boundary are deliberately preserved.
 
 The sign-in page links to an honest recovery-status page, but automated password reset is not configured. It does not use security questions or collect reset information. The planned secure flow uses a single-use, short-lived token delivered to the verified owner email, generic request responses, rate limiting, and invalidation of all existing owner sessions after a successful reset. Until that work is implemented, the installation operator must restore access through the local `owner:create` workflow.
 
@@ -124,6 +129,53 @@ Current limitations are intentional: there is no MFA, passkey, remembered
 device, device/session management, sign-out-all-devices, login-history, or
 user-configurable timeout UI. Those are future security scope, not Milestone
 7.5.
+
+## Statement and CSV imports
+
+After signing in, open **Settings → Data & imports**. The same pipeline is also
+linked from Accounts for balance CSVs and Investments for Fidelity, TSP, and
+holding imports. Nothing writes financial records until the review plan is
+confirmed. Import History, rejected items, duplicates, source retention,
+Delete source now, and safe Undo remain available from the import detail page.
+The normal flow is file-first: choose a statement or CSV and the server
+deterministically identifies the supported family before selecting a parser.
+If a CSV is ambiguous, the only confirmation choices are Balance snapshots and
+Investment holdings. An unknown PDF offers only supported PDF families and
+requires the file to be selected again; the app never silently assigns a type.
+
+Import source files require a dedicated key. Production must provide it
+explicitly and fails closed when it is absent or invalid:
+
+```dotenv
+IMPORT_FILE_ENCRYPTION_KEY="64 hexadecimal characters generated for import files only"
+# IMPORT_STORAGE_DIR="C:\\secure-local-path\\personal-finance-imports"
+```
+
+The key must differ from both `TOKEN_ENCRYPTION_KEY` and
+`PLAID_TOKEN_ENCRYPTION_KEY`. Never commit `.env` or copy the key into logs.
+For normal local Windows development, `pnpm dev:start` generates and reuses an
+ignored development-only key when `.env` does not contain one; it never rewrites
+`.env`. An explicit valid `.env` value takes precedence. Direct `pnpm dev` does
+not provision a key and instead shows a clear configuration-required state on
+the import page.
+Original sources are AES-256-GCM encrypted, retained for 30 days by default,
+and stored under ignored `.dev-runtime/imports` unless an explicit server-only
+directory is configured. Deleting the retained source does not delete imported
+financial records, provenance, history, or otherwise-safe Undo capability.
+An ordinary parsing failure also keeps the encrypted source and shows a
+plain-language reason; it does not silently delete the original.
+The application performs an expiration sweep at server startup and every 15
+minutes while its long-lived Node process is active. Sources that expire during
+downtime are removed after the next startup; a literal deletion deadline while
+the application is stopped requires Milestone 12 operational scheduling.
+
+Supported inputs are Fidelity NetBenefits statements, Fidelity brokerage
+monthly statements, optional Fidelity trade confirmations, TSP statements,
+generic balance CSVs, and structurally clear holding CSVs. Generic transaction
+CSV is intentionally unsupported. PDF parsing uses native text; image-only
+or otherwise insufficient PDFs fall back to bounded server-local Tesseract OCR.
+The document never leaves the server. Low-confidence, oversized, timed-out, or
+ambiguous OCR is rejected rather than guessed.
 
 ## Commands
 

@@ -55,17 +55,19 @@ Assert-DevTest (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedPr
 Assert-DevTest (-not (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedProcessId 4322 -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc $ownedStart.ToString("o"))) "Rejects unrelated process PID"
 Assert-DevTest (-not (Test-DevSavedProcessOwnership -Process $ownedProcess -ExpectedProcessId 4321 -ExpectedProcessName "ngrok" -ExpectedStartTimeUtc $ownedStart.AddMinutes(-5).ToString("o"))) "Rejects reused PID with a different start time"
 
-$sensitive = @'
+$sensitive = @"
 DATABASE_URL=postgresql://finance:db-password@localhost:5432/app
 PLAID_SECRET=plaid-secret-value
-PLAID_TOKEN_ENCRYPTION_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+PLAID_TOKEN_ENCRYPTION_KEY=$("a" * 64)
 access-sandbox-token-value
 public-sandbox-token-value
-'@
+"@
 $redacted = Protect-SensitiveText $sensitive
 Assert-DevTest (-not $redacted.Contains("db-password")) "Redacts connection-string password"
 Assert-DevTest (-not $redacted.Contains("plaid-secret-value")) "Redacts named secrets"
 Assert-DevTest (-not $redacted.Contains("token-value")) "Redacts Plaid token shapes"
+$importSecretLine = Protect-SensitiveText ("IMPORT_FILE_ENCRYPTION_KEY=" + ("f" * 64))
+Assert-DevTest (-not $importSecretLine.Contains(("f" * 64))) "Redacts the generated import-encryption key"
 
 $validCore = @{
   DATABASE_URL = "postgresql://finance:password@localhost:5432/app"
@@ -77,6 +79,11 @@ Assert-DevTest (@(Test-DevCoreConfiguration -Environment $validCore).Count -eq 0
 $invalidCore = @{}
 $invalidCoreIssues = @(Test-DevCoreConfiguration -Environment $invalidCore)
 Assert-DevTest ($invalidCoreIssues -contains "DATABASE_URL is missing") "Reports missing configuration by name only"
+
+$validImportEnvironment = @{ TOKEN_ENCRYPTION_KEY = "b" * 64 }
+Assert-DevTest (Test-DevImportEncryptionKey -Key ("d" * 64) -Environment $validImportEnvironment) "Accepts a dedicated import-encryption key"
+Assert-DevTest (-not (Test-DevImportEncryptionKey -Key ("b" * 64) -Environment $validImportEnvironment)) "Rejects import-key reuse"
+Assert-DevTest (-not (Test-DevImportEncryptionKey -Key "short" -Environment $validImportEnvironment)) "Rejects an invalid import-key shape"
 
 $validPlaid = @{
   PLAID_CLIENT_ID = "present"
@@ -97,12 +104,28 @@ $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("personal-finance-dev-tes
 $runtimeDirectory = Join-Path $temporaryRoot ".dev-runtime"
 try {
   New-Item -ItemType Directory -Path $runtimeDirectory -Force | Out-Null
+  $importKeyPath = Join-Path $runtimeDirectory "import-file-encryption.key"
+  $generatedImport = Initialize-DevImportEncryptionKey -Environment $validImportEnvironment -KeyPath $importKeyPath
+  $reusedImport = Initialize-DevImportEncryptionKey -Environment $validImportEnvironment -KeyPath $importKeyPath
+  Assert-DevTest ($generatedImport.Created -and $generatedImport.Source -eq "LocalDevelopment") "Generates an ignored development-only import key"
+  Assert-DevTest (-not $reusedImport.Created -and $reusedImport.Key -eq $generatedImport.Key) "Reuses the same local import key across startup"
+  Assert-DevTest ((Get-Content -LiteralPath $importKeyPath -Raw).Trim() -eq $generatedImport.Key) "Persists only the generated local key material"
+  $explicitImportEnvironment = $validImportEnvironment.Clone()
+  $explicitImportEnvironment["IMPORT_FILE_ENCRYPTION_KEY"] = "e" * 64
+  $explicitImport = Initialize-DevImportEncryptionKey -Environment $explicitImportEnvironment -KeyPath $importKeyPath
+  Assert-DevTest ($explicitImport.Source -eq "Environment" -and $explicitImport.Key -eq ("e" * 64)) "Prefers explicit valid import configuration without rewriting it"
   $statePath = Join-Path $runtimeDirectory "state.json"
+  $logPath = Join-Path $runtimeDirectory "next.stdout.log"
+  Set-Content -LiteralPath $logPath -Value "temporary"
+  $importsPath = Join-Path $runtimeDirectory "imports"
+  New-Item -ItemType Directory -Path $importsPath -Force | Out-Null
+  Set-Content -LiteralPath (Join-Path $importsPath "retained.enc") -Value "synthetic-encrypted-bytes"
   Save-DevState -Path $statePath -State ([ordered]@{ Version = 1; NextPid = 1234 })
   $saved = Read-DevState -Path $statePath
   Assert-DevTest ($saved.Version -eq 1 -and $saved.NextPid -eq 1234) "Round-trips workflow state"
   Remove-DevRuntimeArtifacts -ProjectRoot $temporaryRoot -Directory $runtimeDirectory
-  Assert-DevTest (-not (Test-Path -LiteralPath $runtimeDirectory)) "Cleans only the scoped runtime directory"
+  Assert-DevTest (-not (Test-Path -LiteralPath $statePath) -and -not (Test-Path -LiteralPath $logPath)) "Cleans scoped runtime state and logs"
+  Assert-DevTest ((Test-Path -LiteralPath $importKeyPath) -and (Test-Path -LiteralPath (Join-Path $importsPath "retained.enc"))) "Preserves the local import key and retained encrypted sources"
 } finally {
   if (Test-Path -LiteralPath $temporaryRoot) { Remove-Item -LiteralPath $temporaryRoot -Recurse -Force }
 }
@@ -112,6 +135,7 @@ Assert-DevTest ($stopScript -notmatch '(?i)Stop-(?:Process|Service).*Docker') "S
 Assert-DevTest ($stopScript -match 'Test-DevSavedProcessOwnership') "Stop workflow requires ownership proof before stopping ngrok"
 $workflowSource = (Get-Content -LiteralPath (Join-Path $PSScriptRoot "start-dev.ps1") -Raw) + (Get-Content -LiteralPath (Join-Path $PSScriptRoot "dev-workflow.psm1") -Raw)
 Assert-DevTest ($workflowSource -notmatch '(?i)settings-store\.json|settings\.json|Set-Content[^\r\n]*Docker|Win32_(?:Window|Desktop)') "Docker startup does not mutate settings or automate its UI"
+Assert-DevTest ($workflowSource -match 'Initialize-DevImportEncryptionKey' -and $workflowSource -match 'SetEnvironmentVariable\("IMPORT_FILE_ENCRYPTION_KEY"') "Startup passes import encryption only through the server process environment"
 
 if ($failures -gt 0) { throw "$failures developer-workflow test(s) failed." }
 Write-Host "[PASS] Developer workflow helper tests completed." -ForegroundColor Green

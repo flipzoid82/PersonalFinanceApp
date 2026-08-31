@@ -9,7 +9,7 @@ function Protect-SensitiveText {
   $protected = [regex]::Replace($protected, '(?i)(postgres(?:ql)?://[^:\s/]+:)[^@\s/]+(@)', '$1***$2')
   $protected = [regex]::Replace(
     $protected,
-    '(?im)^\s*(AUTH_SECRET|OWNER_PASSWORD|PLAID_SECRET|PLAID_TOKEN_ENCRYPTION_KEY|TOKEN_ENCRYPTION_KEY|[^=]*(?:ACCESS_TOKEN|SESSION_COOKIE)[^=]*)\s*=.*$',
+    '(?im)^\s*(AUTH_SECRET|OWNER_PASSWORD|PLAID_SECRET|PLAID_TOKEN_ENCRYPTION_KEY|TOKEN_ENCRYPTION_KEY|IMPORT_FILE_ENCRYPTION_KEY|[^=]*(?:ACCESS_TOKEN|SESSION_COOKIE)[^=]*)\s*=.*$',
     '$1=***'
   )
   $protected = [regex]::Replace($protected, '(?i)\b(access-(?:sandbox|development|production)-)[A-Za-z0-9_-]+', '$1***')
@@ -54,10 +54,78 @@ function Get-DevStatePaths {
   return [pscustomobject]@{
     Directory = $directory
     State = Join-Path $directory "state.json"
+    ImportEncryptionKey = Join-Path $directory "import-file-encryption.key"
     NextStdout = Join-Path $directory "next.stdout.log"
     NextStderr = Join-Path $directory "next.stderr.log"
     NgrokStdout = Join-Path $directory "ngrok.stdout.log"
     NgrokStderr = Join-Path $directory "ngrok.stderr.log"
+  }
+}
+
+function Test-DevImportEncryptionKey {
+  param(
+    [AllowNull()][string]$Key,
+    [Parameter(Mandatory = $true)][hashtable]$Environment
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Key) -or $Key -notmatch '^[a-fA-F0-9]{64}$') { return $false }
+  foreach ($name in @("PLAID_TOKEN_ENCRYPTION_KEY", "TOKEN_ENCRYPTION_KEY")) {
+    if ($Environment.ContainsKey($name) -and
+        -not [string]::IsNullOrWhiteSpace($Environment[$name]) -and
+        $Environment[$name].ToLowerInvariant() -eq $Key.ToLowerInvariant()) {
+      return $false
+    }
+  }
+  return $true
+}
+
+function Initialize-DevImportEncryptionKey {
+  param(
+    [Parameter(Mandatory = $true)][hashtable]$Environment,
+    [Parameter(Mandatory = $true)][string]$KeyPath
+  )
+
+  if ($Environment.ContainsKey("IMPORT_FILE_ENCRYPTION_KEY")) {
+    $explicitKey = [string]$Environment["IMPORT_FILE_ENCRYPTION_KEY"]
+    if (-not (Test-DevImportEncryptionKey -Key $explicitKey -Environment $Environment)) {
+      throw "IMPORT_FILE_ENCRYPTION_KEY must be a dedicated 64-character hexadecimal key."
+    }
+    return [pscustomobject]@{ Key = $explicitKey; Source = "Environment"; Created = $false }
+  }
+
+  if (Test-Path -LiteralPath $KeyPath -PathType Leaf) {
+    $savedKey = [IO.File]::ReadAllText($KeyPath).Trim()
+    if (-not (Test-DevImportEncryptionKey -Key $savedKey -Environment $Environment)) {
+      throw "The ignored local import-encryption key is invalid or conflicts with another key. Remove that local key file and rerun pnpm dev:start."
+    }
+    return [pscustomobject]@{ Key = $savedKey; Source = "LocalDevelopment"; Created = $false }
+  }
+
+  $directory = Split-Path -Parent $KeyPath
+  if (-not (Test-Path -LiteralPath $directory)) {
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+  }
+  $bytes = New-Object byte[] 32
+  $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
+  try { $generator.GetBytes($bytes) } finally { $generator.Dispose() }
+  $generatedKey = ([BitConverter]::ToString($bytes)).Replace("-", "").ToLowerInvariant()
+  try {
+    $stream = [IO.File]::Open($KeyPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+      $encodedKey = [Text.Encoding]::ASCII.GetBytes($generatedKey)
+      $stream.Write($encodedKey, 0, $encodedKey.Length)
+      $stream.Flush($true)
+    } finally {
+      $stream.Dispose()
+    }
+    return [pscustomobject]@{ Key = $generatedKey; Source = "LocalDevelopment"; Created = $true }
+  } catch [IO.IOException] {
+    if (-not (Test-Path -LiteralPath $KeyPath -PathType Leaf)) { throw }
+    $concurrentKey = [IO.File]::ReadAllText($KeyPath).Trim()
+    if (-not (Test-DevImportEncryptionKey -Key $concurrentKey -Environment $Environment)) {
+      throw "The ignored local import-encryption key could not be initialized safely."
+    }
+    return [pscustomobject]@{ Key = $concurrentKey; Source = "LocalDevelopment"; Created = $false }
   }
 }
 
@@ -367,12 +435,22 @@ function Remove-DevRuntimeArtifacts {
   $root = [IO.Path]::GetFullPath($ProjectRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
   $target = [IO.Path]::GetFullPath($Directory).TrimEnd([IO.Path]::DirectorySeparatorChar)
   if ($target -ne (Join-Path $root ".dev-runtime")) { throw "Refusing to clean an unexpected runtime directory." }
-  if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+  if (-not (Test-Path -LiteralPath $target)) { return }
+  $preservedNames = @("import-file-encryption.key", "imports")
+  foreach ($item in Get-ChildItem -LiteralPath $target -Force) {
+    if ($preservedNames -notcontains $item.Name) {
+      Remove-Item -LiteralPath $item.FullName -Recurse -Force
+    }
+  }
+  if (-not (Get-ChildItem -LiteralPath $target -Force | Select-Object -First 1)) {
+    Remove-Item -LiteralPath $target -Force
+  }
 }
 
 Export-ModuleMember -Function @(
   "Protect-SensitiveText", "Write-DevCheck", "Get-DevProjectRoot", "Get-DevStatePaths",
   "Read-DevEnvFile", "Test-DevCoreConfiguration", "Test-DevPlaidConfiguration",
+  "Test-DevImportEncryptionKey", "Initialize-DevImportEncryptionKey",
   "Get-DevCommand", "Get-DevDockerDesktopPath", "Get-DevDockerStartupMode", "Get-DevDockerCliStartOutcome", "Get-DevNgrokStartupMode",
   "Wait-DevCondition", "Test-DevSavedProcessOwnership", "Invoke-DevNativeCommand", "Get-DevProcessSnapshot", "Test-DevProjectNextProcess",
   "Get-DevNextProcessRoot", "Get-DevListeningProcessId", "Test-DevTcpPort",

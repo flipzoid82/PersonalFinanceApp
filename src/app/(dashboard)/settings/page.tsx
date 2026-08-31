@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { ThemeControl } from "@/components/theme/theme-control";
 import { sessionPolicy } from "@/lib/session-policy";
+import Link from "next/link";
 
 function duration(milliseconds: number) {
   const minutes = milliseconds / 60_000;
@@ -26,6 +27,20 @@ export default function SettingsPage() {
       </div>
       <Card className="p-6">
         <ThemeControl variant="settings" />
+      </Card>
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold">Data &amp; imports</h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Import supported statements or balance and holding CSVs, review
+          proposed changes, and manage Import History, Undo, and retained
+          sources.
+        </p>
+        <Link
+          href="/settings/imports"
+          className="mt-4 inline-block font-semibold text-[var(--semantic-info-text)] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--focus-ring)]"
+        >
+          Open Data &amp; imports
+        </Link>
       </Card>
       <Card className="p-6">
         <h2 className="text-xl font-semibold">Session security</h2>

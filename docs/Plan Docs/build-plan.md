@@ -1,213 +1,289 @@
 # Build Plan
 
-## Cross-Milestone Visual Semantics and Theme Support
+## Governing forward roadmap
 
-The application will use a shared semantic color system as a secondary visual cue.
+The Household Financial Control roadmap below governs future work after the Milestone 11 checkpoint/freeze. Milestones 1–10 remain completed historical foundations. Milestone 11 is stabilized, checkpointed, and frozen; retained, secondary, Settings-based, independent of Household Control milestones, and not a prerequisite for Household Control 1.
 
-Required meanings:
+The product north star is:
 
-- Positive, income, assets, and paid: green
-- Negative, spending, debt, and overdue: red
-- Warning, predicted, stale, medium confidence, and needs attention: amber
-- Informational, confirmed, and synced: blue
-- Investments: purple
-- Inactive, skipped, unavailable, and muted: gray
+> **What can we safely spend right now without creating a problem later?**
 
-Rules:
+Safe-to-Spend V1 remains owner-only. Household sharing, external warnings, deeper goals, and automation follow only after the first useful household-control version is correct and explainable.
 
-- Color must never be the only way meaning is communicated.
-- Every semantic state must also use text, signs, icons, labels, or another non-color cue.
-- Semantic styles must be centralized in reusable theme tokens, utilities, variants, or shared components.
-- Support light, dark, and system theme preferences.
-- Respect the system theme when the user has not selected an explicit preference.
-- Persist the user's explicit theme preference.
-- Contrast must remain accessible in both light and dark themes.
-- Charts, badges, forms, tables, alerts, and financial values must remain understandable in both themes.
-- Milestone 5 introduces theme-aware semantic tokens.
-- Milestone 9 extends semantic styling across Bills and Spending.
-- Milestone 10 adds user-facing theme controls and completes dark-mode coverage across existing pages.
-- Milestone 12 includes a final accessibility, contrast, and theme-persistence audit.
+## Cross-milestone invariants
 
-## Milestone 1: Project Foundation
+- Provider and imported source data remains immutable; local/effective meaning is stored separately.
+- Owner corrections always take precedence.
+- Financial calculations use exact Decimal arithmetic.
+- Transfers and credit-card payments never duplicate spending.
+- Pending and posted activity is reconciled without duplicate liquidity effects.
+- Each commitment is subtracted at most once.
+- Only opted-in checking/savings accounts contribute spendable cash.
+- Investments, credit capacity, property, and debt capacity never increase Safe-to-Spend.
+- Consolidated V1 planning uses USD and the owner's configured local planning time zone.
+- Stale, materially incomplete, or unsupported inputs fail closed or visibly reduce confidence.
+- Every financial state uses text, signs, icons, labels, or explanation in addition to semantic color.
+- All owner reads and mutations remain server-authorized and owner-scoped.
+- The app remains read-only with respect to real financial institutions.
 
-- Create Next.js application with TypeScript
-- Configure linting and formatting
-- Add Tailwind CSS and UI component library
-- Configure PostgreSQL
-- Add Prisma
-- Add environment-variable validation
-- Add authentication
-- Create base dashboard layout
-- Add test framework
-- Add CI checks
+## Historical foundation: Milestones 1–10
 
-Do not implement Plaid in this milestone.
+The implemented historical milestones remain preserved:
 
-## Milestone 2: Core Data Model
+1. Project Foundation
+2. Core Data Model
+3. Demo Dashboard
+4. Calendar and Recurring Events
+5. Manual Assets and Investments
+6. Plaid Sandbox
+7. Recurring Detection
+8. Session Security (Milestone 7.5)
+9. Transactions and Overrides (Milestone 8)
+10. Bills and Spending (Milestone 9)
+11. Net Worth, Investments, and Theme Control (Milestone 10)
 
-- Implement User
-- Implement DataSource
-- Implement InstitutionConnection
-- Implement Account
-- Implement Transaction
-- Implement TransactionOverride
-- Implement RecurringStream
-- Implement CalendarEvent
-- Implement CalendarOverride
-- Implement InvestmentHolding
-- Implement InvestmentBalanceSnapshot
-- Implement InvestmentTransaction
-- Implement ManualAsset
-- Implement BalanceSnapshot
-- Implement ImportJob
-- Add migrations and seed data
-- Add model-level tests
+Their merged architecture documents remain historical records of implemented behavior and must not be rewritten to imply the pivot existed earlier.
 
-## Milestone 3: Demo Dashboard
+## Milestone 11 checkpoint/freeze: Imports
 
-- Build Overview using seeded data
-- Add metric cards
-- Add account summary
-- Add recent transactions
-- Add upcoming bills card
-- Add spending-by-category chart
-- Add investment summary card
-- Add net-worth trend
-- Add loading, empty, stale, partial, and error states
+Milestone 11 is **stabilized, checkpointed, and frozen**; retained, secondary, Settings-based, independent of Household Control milestones, and not a prerequisite for Household Control 1.
 
-## Milestone 4: Calendar and Recurring Events
+It remains retained, secondary to household financial control, located in Settings, independent of Household Control milestones, and bounded to its already approved document families and safety model.
 
-- Build month view
-- Build upcoming-list view
-- Add seeded recurring bills
-- Add predicted and confirmed labels
-- Add confidence levels
-- Add statuses
-- Add filters
-- Add manual confirmation and correction flows
-- Add due-date versus posting-date display
-- Add paid matching logic with test data
+Do not expand supported document families, add parser polish, or make import completion a dependency of Household Control 1. Investments, Net Worth, retirement tracking, and statement imports remain available but are no longer the product center.
 
-## Milestone 5: Manual Assets and Investments
+## Pivot Preparation — Canonical Plan Reconciliation
 
-- Add manual accounts
-- Add manual assets and debts
-- Add manual investment accounts
-- Add manual balance snapshots
-- Add known Fidelity account setup
-- Include manual investments in net worth
-- Show data source and last updated time
-- Introduce theme-aware semantic color tokens and reusable variants
-- Apply semantic styling to assets, debts, investments, freshness, and status labels
-- Ensure every color-coded state also has text, a sign, an icon, or another non-color cue
-- Ensure all new Milestone 5 components render correctly in light and dark themes
-- Add accessibility and regression tests for semantic variants and theme behavior
+### Outcome
 
-## Milestone 6: Plaid Sandbox
+Canonical Product Requirements, Financial Definitions, Build Plan, Overview direction, Calendar direction, and supporting planning documents describe one coherent owner-only household financial-control product.
 
-- Add Plaid SDK
-- Create Link-token endpoint
-- Implement public-token exchange
-- Encrypt stored access tokens
-- Implement account sync
-- Implement transaction sync
-- Add webhook endpoint
-- Add repair flow
-- Add integration tests with Sandbox
+### Scope
 
-## Milestone 7: Recurring Detection
+- approve and document the Safe-to-Spend north star;
+- record the approved V1 decisions;
+- reconcile transaction, budget, cash-flow, and planning definitions;
+- replace the forward roadmap after the Milestone 11 freeze point;
+- preserve historical architecture documents and existing features.
 
-- Derive recurring candidates from transaction history
-- Calculate expected dates and amounts
-- Assign confidence levels
-- Keep inferred dates distinct from confirmed due dates
-- Match posted transactions to projected events
-- Prevent predicted-only items from being marked overdue
+### Completion criteria
 
-## Milestone 8: Transactions and Overrides
+- Product Requirements, Financial Definitions, and Build Plan agree;
+- the governing roadmap is explicit;
+- Milestone 11 is clearly stabilized, checkpointed, frozen, and independent of Household Control work;
+- no product implementation is performed in the reconciliation pass.
 
-- Build transaction table
-- Add filters and search
-- Add transaction detail view
-- Add category and financial-role overrides
-- Add notes
-- Add report exclusion
-- Preserve original provider values
+## Household Control 1 — Transaction Truth and Attention
 
-## Milestone 9: Bills and Spending
+### Outcome
 
-- Implement recurring-stream display
-- Add upcoming activity
-- Add spending categories
-- Add month-over-month comparison
-- Add merchant totals
-- Add unusual-spending indicators
-- Extend semantic styling to spending, bills, overdue states, warnings, expense categories, and negative cash flow
-- Keep status and category meaning understandable without color
-- Standardize chart legends, labels, and accessible text equivalents in both themes
+Every reportable transaction has one auditable effective meaning, and ambiguous activity is easy to resolve.
 
-## Milestone 10: Net Worth and Investment Views
+### Scope
 
-- Add net-worth calculation
-- Add historical trend
-- Add investment account list
-- Add holdings display where available
-- Add allocation view where available
-- Add freshness indicators
-- Make synced, imported, and manual values distinct
-- Add a user-facing theme control with Light, Dark, and System options
-- Persist the user's explicit theme preference
-- Respect the system theme when no explicit preference is stored
-- Complete dark-mode support across existing application pages
-- Complete semantic styling across assets, debts, investments, and trend views
-- Standardize positive and negative value presentation without relying on color alone
-- Verify investment and net-worth charts use accessible legends and summaries in both themes
+- canonical effective classification and provenance;
+- classification confidence and coverage reporting;
+- Transaction Inbox;
+- deterministic classification rules;
+- financial-role and category review;
+- transfer and credit-card-payment pairing;
+- refund/reimbursement linking;
+- exact split transaction allocations;
+- one shared effective classification service for Transactions, Overview, Spending, recurrence, and later budgets;
+- owner corrections that always win without mutating provider data.
 
-## Milestone 11: CSV Import
+### Approved behavior
 
-- Add import mapping
-- Add validation
-- Add duplicate detection
-- Add import summary
-- Add rejected-row reporting
-- Support Fidelity positions CSV or statement-derived import
-- Support generic balance snapshot import
+- high-confidence deterministic classification may enter live totals automatically;
+- low-confidence, conflicting, ambiguous, high-impact, or structurally uncertain activity enters the Inbox;
+- materially unresolved coverage is visible and lowers confidence;
+- minor unresolved coverage may coexist with qualified useful planning information;
+- linked refunds/reimbursements reduce the relevant allocation when they post and are not ordinary income by default.
 
-## Milestone 11.5: UX/UI Audit, Branding, and Product Polish
+### Completion criteria
 
-- Audit every owner-facing route and major user journey
-- Replace developer-oriented UI copy with consumer-friendly language
-- Standardize terminology across Overview, Accounts, Transactions, Bills,
-  Calendar, Spending, Investments, Net Worth, Import, and Settings
-- Add contextual help and progressive disclosure where financial concepts
-  require explanation
-- Improve navigation, orientation, detail-return flows, and action discoverability
-- Standardize proven table/list/search/filter/sort interaction patterns
-- Improve form clarity, validation feedback, confirmations, and save/reset behavior
-- Improve empty, no-results, loading, partial, stale, and error states
-- Audit visual hierarchy, information density, long-text handling, and readability
-- Verify every major route at mobile, tablet, and desktop widths
-- Perform full keyboard and accessibility usability testing
-- Verify Light, Dark, and System experiences remain coherent
-- Ensure provider/internal codes are not primary user-facing presentation when
-  readable deterministic labels are available
-- Preserve all existing financial calculations, provider data, overrides,
-  owner scoping, session security, and auditability
-- Document the UX audit, resolved findings, deferred findings, terminology,
-  shared interaction patterns, and known limitations
+- all included posted activity has a reviewed or high-confidence effective role;
+- every unresolved item has a visible reason;
+- split allocations reconcile exactly to the transaction magnitude;
+- movement pairs do not change household income/spending;
+- pending-to-posted replacement does not duplicate classification or liquidity effects;
+- sync and classification reruns are idempotent;
+- owner-scoping, provenance, override precedence, and Decimal behavior have PostgreSQL coverage;
+- shared calculations no longer depend on a recurrence-only classification path.
 
-## Milestone 12: Production Readiness
+### Explicitly deferred
 
-- Security review
-- Backup strategy
-- Observability
-- Error tracking
-- Rate limiting
-- Production deployment
-- Plaid Production Trial setup
-- Connect real institutions only after Sandbox validation
-- Audit semantic colors for accessible contrast in light and dark themes
-- Verify no financial value, status, confidence level, or warning relies on color alone
-- Verify charts, badges, forms, tables, alerts, and financial values remain readable in both themes
-- Verify theme preference persistence and system-theme behavior
-- Verify semantic styling remains consistent across responsive layouts
+- budgets;
+- account projections;
+- Safe-to-Spend;
+- ML/AI classification;
+- multi-user household accounts.
+
+## Household Control 2 — Budget Plan and Live Scoreboard
+
+### Outcome
+
+The owner can see what was spent, what remains, and whether spending pace is safe.
+
+### Scope
+
+- stable household budget categories;
+- monthly allocations in the owner's planning time zone;
+- fixed, flexible, and protected policies;
+- exact transaction allocations and splits;
+- explicit auditable reallocations;
+- category spending and remaining amount;
+- weekly pace derived from the monthly plan;
+- projected end-of-period spending and over/under amount;
+- classification coverage, confidence, explanation, and transaction drill-down;
+- explicit initial rollover decisions.
+
+### Completion criteria
+
+- category totals reconcile exactly to classified transaction allocations;
+- refunds/reimbursements and exclusions follow canonical definitions;
+- spending pace handles partial periods and incomplete coverage conservatively;
+- reallocation is balanced and auditable;
+- every number drills down to its transactions and assumptions;
+- no budget state relies on color alone.
+
+### Explicitly deferred
+
+- automatic rollover;
+- arbitrary custom budget calendars;
+- sinking funds;
+- external notifications.
+
+## Household Control 3 — Routed Calendar and Account Projections
+
+### Outcome
+
+The owner knows which account receives income, which account pays each obligation, and whether that account will have enough money.
+
+### Scope
+
+- planning-account participation and roles;
+- per-account reserve floors and optional household reserve floor;
+- income destination routing;
+- bill/obligation payment routing;
+- planned transfer source, destination, amount, and date;
+- per-account dated projection ledger;
+- Funded, Expected to be funded by income, Transfer required, At risk, Unfunded, and Uncertain states;
+- pay-cycle boundaries derived from expected income;
+- freshness, confidence, and projection lineage.
+
+### Approved behavior
+
+- fresh authoritative available balance is used when appropriate;
+- otherwise current balance is reduced by unreconciled pending outflows;
+- a pending outflow is never subtracted twice;
+- pending income does not increase current Safe-to-Spend;
+- separately modeled expected income may enter a future dated projection according to confidence/commitment policy;
+- transfers are recommendations plus owner acknowledgment only.
+
+### Completion criteria
+
+- every projected balance change has a source and certainty label;
+- internal transfers affect both accounts but not household spending;
+- card payments affect cash routing but do not duplicate purchase spending;
+- account-specific shortfalls remain visible even if household cash is positive;
+- stale or incomplete critical inputs produce Uncertain rather than a precise funded result;
+- exact Decimal projection and owner-scoping have PostgreSQL coverage.
+
+### Explicitly deferred
+
+- bank-initiated transfers;
+- automated bill payment;
+- stochastic long-range forecasting.
+
+## Household Control 4 — Explainable Safe to Spend
+
+### Outcome
+
+The app answers what can safely be spent before the next relevant income event and exactly why.
+
+### Scope
+
+- commitment ledger;
+- commitment deduplication;
+- household and account-level Safe-to-Spend;
+- next-relevant-income horizon;
+- proposed-purchase check;
+- funding-action summary;
+- balance, pending, income, obligation, transfer, reserve, and budget lineage;
+- classification coverage, freshness, and confidence;
+- Home/Today primary experience.
+
+### Completion criteria
+
+- only opted-in USD checking/savings accounts enter the consolidated number;
+- every included amount is visible and attributable;
+- no economic commitment is subtracted twice;
+- per-account funding gaps cannot be hidden by unrelated household wealth;
+- materially unresolved, stale, or unsupported critical inputs fail closed;
+- immaterial unresolved activity is quantified and clearly qualifies the result;
+- the owner can reproduce the number from its explanation;
+- Home, Transactions, Plan, and Accounts answer all ten first-use questions.
+
+This milestone completes the **first useful household-control version**.
+
+## Household Control 5 — Early Warnings and Digest
+
+### Scope
+
+- warning records and lifecycle;
+- informational, watch, warning, and critical severity;
+- deduplication, acknowledgment, and quieting;
+- spending-pace warnings;
+- reserve and funding-gap warnings;
+- stale-data warnings;
+- weekly household summary;
+- external delivery only after scheduler, privacy, and security design.
+
+## Household Control 6 — Household Coordination
+
+### Scope
+
+- household/member model;
+- roles and granular permissions;
+- shared category allowances;
+- selected warning routing;
+- privacy-safe summaries;
+- transaction attribution where appropriate.
+
+## Household Control 7 — Irregular Expenses, Goals, and Debt Tradeoffs
+
+### Scope
+
+- sinking funds;
+- annual and irregular obligations;
+- reserve progress;
+- unused-budget surplus allocation;
+- debt and savings goals;
+- explicit scenario tradeoffs.
+
+## Future information architecture
+
+Documented direction, not current implementation:
+
+1. Home
+2. Transactions — Inbox + ledger
+3. Plan — budgets + bills + Calendar + cash-flow projections
+4. Accounts
+5. Wealth — Investments + Net Worth
+6. Settings — connections + imports + preferences
+
+Existing routes and features remain until a separately approved implementation changes them.
+
+## Superseded legacy forward milestones
+
+The former forward plan placed a broad UX/UI audit and production-readiness milestone after Milestone 11. Those concerns are not discarded, but their old sequence no longer governs product development:
+
+- route-specific usability, terminology, responsive, accessibility, and theme quality are completion requirements of each Household Control milestone rather than a separate product-direction milestone;
+- production security, backup, observability, rate limiting, durable scheduling, provider production approval, and final accessibility review remain required before deployment and are retained under Later production and quality work.
+
+This preserves the historical intent without allowing the legacy wealth-centered roadmap to supersede Household Control 1–7.
+
+## Later production and quality work
+
+Production readiness remains required before real-world deployment, including security review, backup and recovery, observability, error tracking, rate limiting, durable scheduling, Plaid Production Trial, accessibility/contrast review, privacy-safe notification delivery, and operational validation of retention and warning jobs.

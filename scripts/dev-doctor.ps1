@@ -15,6 +15,7 @@ function Report-Result {
 try {
   $projectRoot = Get-DevProjectRoot -ScriptRoot $PSScriptRoot
   Set-Location -LiteralPath $projectRoot
+  $paths = Get-DevStatePaths -ProjectRoot $projectRoot
   Report-Result PASS "Project" "Verified Personal Finance App root."
 
   $nodePath = Get-DevCommand -Names @("node.exe", "node")
@@ -75,6 +76,23 @@ try {
     else { Report-Result FAIL "Core environment" ($coreIssues -join "; ") }
   } else {
     Report-Result FAIL "Environment" ".env is missing. Copy .env.example and configure it locally."
+  }
+
+  if ($environment.ContainsKey("IMPORT_FILE_ENCRYPTION_KEY")) {
+    if (Test-DevImportEncryptionKey -Key ([string]$environment["IMPORT_FILE_ENCRYPTION_KEY"]) -Environment $environment) {
+      Report-Result PASS "Import storage" "The explicit dedicated encryption configuration is valid; its value was not displayed."
+    } else {
+      Report-Result FAIL "Import storage" "IMPORT_FILE_ENCRYPTION_KEY is invalid or conflicts with another key."
+    }
+  } elseif (Test-Path -LiteralPath $paths.ImportEncryptionKey -PathType Leaf) {
+    $localImportKey = [IO.File]::ReadAllText($paths.ImportEncryptionKey).Trim()
+    if (Test-DevImportEncryptionKey -Key $localImportKey -Environment $environment) {
+      Report-Result PASS "Import storage" "An ignored development-only encryption key is ready; its value was not displayed."
+    } else {
+      Report-Result FAIL "Import storage" "The ignored development-only import key is invalid or conflicts with another key."
+    }
+  } else {
+    Report-Result WARN "Import storage" "No import key exists yet; pnpm dev:start will generate an ignored development-only key without editing .env."
   }
 
   if ($pnpmPath -and (Test-Path -LiteralPath (Join-Path $projectRoot "node_modules\prisma\build\index.js"))) {

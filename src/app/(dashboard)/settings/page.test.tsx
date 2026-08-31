@@ -28,5 +28,8 @@ describe("SettingsPage", () => {
     ).toHaveTextContent("A session always ends after 3 minutes");
     expect(screen.queryByText(/0\.5 minutes/i)).not.toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /System/ })).toBeChecked();
+    expect(
+      screen.getByRole("link", { name: "Open Data & imports" }),
+    ).toHaveAttribute("href", "/settings/imports");
   });
 });
