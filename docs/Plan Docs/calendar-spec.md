@@ -15,6 +15,7 @@ The existing Calendar is a strong prediction/correction foundation. Household Co
 - Transfers affect account balances but are not household spending.
 - Every projection change must have source, date, amount, certainty, and inclusion lineage.
 - No event or commitment may affect a projection twice.
+- Existing Bills behavior, recurring streams, owner-confirmed corrections, and Calendar occurrences are one obligation foundation. A future Budget & Income Plan may attach allocation/reservation metadata but must not create a second unrelated obligation truth source.
 
 ## Existing views
 
@@ -154,6 +155,19 @@ When a posted transaction appears, the system may match it to one compatible eve
 - Ambiguous matches require owner confirmation.
 - A matched event releases/reconciles its future commitment so it is not subtracted again.
 - A credit-card payment affects cash projection but does not duplicate the original card-purchase spending.
+
+`CalendarEvent.linkedTransactionId` represents fulfillment of an occurrence. It is conceptually distinct from an HC1 `TransactionRelationship`, which links two source transactions as an internal transfer, credit-card payment, refund, or reimbursement. Calendar keeps its own match evidence, confidence, and confirmation semantics while consuming the canonical HC1 role/direction interpretation where relevant.
+
+Commitment lineage is conceptually:
+
+```text
+existing bill or recurring obligation
+  -> planning allocation/reservation
+  -> Calendar occurrence
+  -> fulfilling transaction
+```
+
+These are stages or interpretations of one economic commitment where applicable, not independent amounts to subtract.
 
 ## Overdue rules
 

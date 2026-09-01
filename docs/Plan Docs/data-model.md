@@ -281,13 +281,115 @@ Stores user corrections without mutating inferred source data.
 - created_at
 - completed_at, nullable
 
-The current Milestone 11 work expands this baseline with reviewed-plan, candidate, account-match, provenance, parser/version, deduplication, retention, result, and Undo audit data. `prisma/schema.prisma` and `docs/architecture-milestone-11.md` describe the stabilized pre-checkpoint implementation. Household Control milestones do not depend on those import records.
+Milestone 11 expanded this baseline with reviewed-plan, candidate, account-match, provenance, parser/version, deduplication, retention, result, and Undo audit data. `prisma/schema.prisma` and `docs/architecture-milestone-11.md` describe the stabilized checkpoint implementation. Household Control milestones do not depend on those import records.
 
 ## Household Financial Control model direction
 
-### OwnerPlanningProfile
+The models in this section are planned architecture. `prisma/schema.prisma`, current migrations, and current implementation remain the truth about what exists until the owning Household Control milestone implements and verifies a change.
 
-Planned for the household-control roadmap:
+Household Control 1 preserves `Transaction` as immutable provider/source evidence. It extends the existing owner `TransactionOverride` and adds only durable interpretation, category, relationship, rule, and real-split concepts that the current schema cannot represent safely.
+
+### TransactionCategory — planned for HC1
+
+A stable owner-scoped transaction-purpose category, distinct from a future planning destination:
+
+- owner_id
+- stable category identity and optional system key
+- kind: expense or income
+- owner-visible label
+- normalized identity
+- active state and display order
+- created_at / updated_at
+
+The approved starter expense categories are Housing, Utilities, Groceries, Dining, Transportation, Health, Insurance, Household, Personal, Shopping, Entertainment, Subscriptions, Education/Childcare, Travel, Taxes, Fees & Interest, and Other Expense. Starter income categories are Payroll, Benefits, Interest Income, and Other Income.
+
+Bootstrap uses stable system identity and is idempotent. A retry must not duplicate a category, reactivate an owner-deactivated category, overwrite an owner-renamed label, reset owner ordering, or replace another owner customization. This idempotency requirement does not authorize a whole-database bootstrap or classification backfill on every application startup.
+
+Provider category codes remain immutable evidence and do not become owner taxonomy automatically. `Uncategorized` is unresolved state, not a permanent category. Mixed-purpose activity uses exact allocations rather than a fabricated `Mixed` category.
+
+### TransactionClassification — planned for HC1
+
+Represents the current versioned system/rule interpretation without mutating `Transaction` and without competing with owner truth:
+
+- owner_id
+- transaction_id
+- proposed financial role
+- proposed transaction_category_id when applicable
+- source-adapted economic direction
+- separate role/category/direction certainty
+- provenance, classifier/rule version, evidence, and reason codes
+- review/conflict state and timestamps
+
+Canonical direction must be deterministic, source-adapter-aware, versioned, auditable, efficiently queryable, reproducible after reruns, and owner-overridable. Persisting classified direction is recommended; an equivalent representation is acceptable only if it preserves those properties.
+
+One current classification exists per owner transaction. Reclassification is idempotent and must never overwrite an explicit owner decision.
+
+### TransactionOverride — planned narrow HC1 extension
+
+The existing one-to-one owner correction remains authoritative. HC1 may add:
+
+- stable transaction_category_id override;
+- economic_direction override;
+- review/confirmation metadata necessary to preserve an explicit owner decision.
+
+Field-level effective precedence is owner override, owner-confirmed rule, deterministic versioned system mapping, permitted provider evidence, then unresolved. Legacy free-form category text remains readable during controlled migration and cannot be discarded when kind or identity is ambiguous.
+
+The existing untyped `TransactionOverride.linkedTransactionId` is not silently repurposed or dropped. Every non-null value must be inventoried owner-safely. Only deterministically understood links may convert to typed relationships. Ambiguous links retain a compatibility read path and explicit review state. A later removal requires proof that no unresolved value, read/write path, test, or owner intent depends on the field; safe retention is permitted through HC1 completion.
+
+### ClassificationRule — planned for HC1
+
+An owner-confirmed deterministic rule for similar activity:
+
+- owner_id
+- bounded match scope and normalized value
+- optional account scope
+- resulting category and/or financial role
+- active state and deterministic priority
+- provenance/version and timestamps
+
+Supported matching is bounded to exact normalized merchant/description, escaped prefix/contains, and merchant plus account. Arbitrary owner regular expressions are excluded. Equal-priority conflicts resolve to review, never insertion order.
+
+New owner rules are future-only by default. Historical owner-rule application requires preview, affected transactions, expected reporting impact, and explicit confirmation. This does not prohibit the separate controlled, versioned, deterministic initial system-classification backfill.
+
+### TransactionAllocation — planned for HC1
+
+Persisted only for real splits:
+
+- owner_id
+- transaction_id
+- transaction_category_id
+- positive exact Decimal magnitude
+- stable display order
+- provenance/review metadata
+
+All allocations inherit the transaction currency and must sum exactly to its absolute magnitude. A category-bearing unsplit transaction is exposed as one allocation by the canonical effective-allocation API without requiring redundant storage. Split writes use one owner-scoped transaction and concurrency control so partial or conflicting allocation sets never become effective.
+
+### TransactionRelationship — planned for HC1
+
+Links economically related source transactions without changing either source record:
+
+- owner_id
+- directed source_transaction_id and target_transaction_id
+- type: internal transfer, credit-card payment, refund, or reimbursement
+- applied exact magnitude where partial/multiple linkage requires it
+- provenance and separate certainty
+- review/confirmation state and timestamps
+
+Directed endpoints and type-specific database/service constraints prevent reverse duplicates and invalid cardinality. Confirmed endpoints must share an owner and currency and satisfy type-specific direction, account, and amount invariants. Transfer and card-payment heuristics are suggestion-first; amount/date similarity alone never confirms a pair.
+
+Calendar's transaction link remains separate because it records event fulfillment, not a transaction-to-transaction economic relationship. Initial reimbursement uses refund-like financial-role semantics while relationship type distinguishes reimbursement from merchant refund.
+
+### Explicit HC1 eligibility predicates
+
+HC1 must not collapse meaning into one `reportable` boolean. It defines separate classification, finalized-reporting, Inbox, recurrence, relationship/pairing, allocation, and later-planning eligibility predicates. Historical disconnected activity may remain valid reporting history while being ineligible for current liquidity or new recurrence generation. Non-USD populations remain separate. Pending, canceled-successor, removed, owner-excluded, investment, borrowing, unresolved, and unsupported cases have predicate-specific treatment.
+
+### HC1 backfill and cutover
+
+HC1 uses forward-only compatible schema expansion, bounded idempotent backfill, legacy read-through, and an atomic owner-level consumer cutover. Before cutover, legacy and canonical results are reconciled. Every difference in financial totals, transaction inclusion, classification, allocation, or relationship results must be an approved semantic correction, expected consequence of newly resolved activity, or resolved defect; zero unexplained differences may remain.
+
+Backfill supports interruption recovery, classifier versioning, concurrent Plaid sync, concurrent owner edits, and fail-closed unresolved state. It does not run a giant data rewrite inside the schema migration or repeat a whole-database backfill at every startup.
+
+### OwnerPlanningProfile — planned for HC2+
 
 - owner_id
 - planning_time_zone
@@ -297,7 +399,7 @@ Planned for the household-control roadmap:
 
 The profile is owner-only through Safe-to-Spend V1. It is not a multi-user household model.
 
-### PlanningAccountPolicy
+### PlanningAccountPolicy — planned for HC3
 
 Extends an existing current checking/savings account with planning policy rather than duplicating the account:
 
@@ -310,109 +412,27 @@ Extends an existing current checking/savings account with planning policy rather
 
 Investments, property, credit capacity, and unrelated debt capacity are not eligible planning cash.
 
-### TransactionClassification
+### Budget & Income Plan boundary — planned for HC2
 
-Represents the canonical effective interpretation without mutating the source transaction:
+HC2 may add durable plan and allocation concepts for planned income, category spending, fixed obligations, protected reserves, generic saving, generic extra debt principal, and intentionally unassigned income. Exact table design belongs to HC2.
 
-- owner_id
-- transaction_id
-- effective_merchant/category/financial_role
-- provenance and classifier/rule version
-- confidence and reason codes
-- review state
-- reviewed_at, nullable
-- created_at / updated_at
+HC2 fixed obligations reuse or explicitly reconcile existing Bills behavior, `RecurringStream`, `CalendarEvent`, and owner-confirmed corrections. “Bills” describes the existing product surface/domain and does not imply a separate `Bill` model. HC2 may attach planning metadata but must not create an unrelated second obligation truth source.
 
-An owner correction has precedence. Household Control 1 must reconcile this concept with the existing one-to-one `TransactionOverride` rather than introduce two competing effective-value paths.
+HC1 `TransactionCategory` describes actual transaction purpose. HC2 planning destinations are broader. HC5 owns named goals, sinking funds, irregular expenses, payoff projections, and debt-versus-saving tradeoffs.
 
-### ClassificationRule
+### PlannedTransfer — planned for HC3
 
-An explicit owner-scoped deterministic rule for similar future activity:
+A recommended/owner-acknowledged future movement retains owner, source/destination account, exact amount/currency, required date, state/reason, and obligation/projection lineage. The application never initiates the transfer.
 
-- owner_id
-- match scope and normalized match value
-- resulting category/financial role
-- active state and priority
-- provenance and timestamps
+### Projection and commitment lineage — planned for HC3–HC4
 
-V1 does not require an opaque ML model.
+Whether projection rows are stored or derived is decided by the owning milestone. The design must retain owner and planning account, starting-balance source/freshness, event/transaction/transfer/reserve/plan source identity, dated amount/direction, certainty/inclusion, balance after event, commitment identity, funding status, and explanation.
 
-### TransactionAllocation
-
-Allocates a reportable transaction across one or more stable household budget categories:
-
-- owner_id
-- transaction_id
-- budget_category_id
-- exact amount
-- currency
-- provenance/review metadata
-
-Allocations for one transaction must reconcile exactly to its reportable magnitude.
-
-### TransactionRelationship
-
-Links economically related transactions while retaining each source record:
-
-- owner_id
-- source_transaction_id
-- related_transaction_id
-- relationship type: internal transfer, credit-card payment, refund, reimbursement
-- confidence/provenance
-- review state
-
-Database constraints and commit logic must prevent ambiguous duplicate pairing.
-
-### BudgetCategory and BudgetAllocation
-
-Stable household-purpose categories and their monthly plan:
-
-- owner_id
-- category identity, label, active state
-- period start/end in the planning time zone
-- allocated amount and currency
-- policy: fixed, flexible, or protected
-- warning thresholds where configured
-- explicit rollover/reallocation metadata
-
-Budgets are plans, not account balances.
-
-### BudgetReallocation
-
-An exact, balanced, auditable movement between period allocations. It does not create a bank transaction or move institution funds.
-
-### PlannedTransfer
-
-A recommended/owner-acknowledged future movement:
-
-- owner_id
-- source_account_id
-- destination_account_id
-- amount/currency
-- required date
-- status/reason
-- related obligation/projection lineage
-
-V1 never initiates the transfer.
-
-### Projection and commitment lineage
-
-Household Control 3–4 require a deterministic projection/commitment representation. Whether projection rows are stored or derived must be decided by the owning milestone. The design must retain:
-
-- owner and planning account
-- starting balance source/freshness
-- event/transaction/transfer/reserve/budget source identity
-- dated exact amount and direction
-- confidence/inclusion decision
-- balance after event
-- commitment identity used for deduplication
-- funding status and explanation
-
-A derived cache must never become a second mutable source of financial truth.
+One economic commitment reduces capacity at most once. Existing Bills/recurrence/Calendar obligations, future plan allocations, actual transactions, transfers, saving funding, reserves, and goals must reconcile through lineage rather than subtract independently. A derived cache never becomes a second mutable source of financial truth.
 
 ### Future household membership
 
-Household/member/permission models are explicitly deferred until after Safe-to-Spend V1. Current ownership remains `User`-scoped. New V1 models should avoid unnecessary assumptions that prevent a later household boundary, but must not weaken present owner isolation.
+Household/member/permission models are deferred until HC7. Current ownership remains `User`-scoped. New owner-only models must preserve strict isolation without unnecessarily preventing a later household boundary.
 
 ## Recurring Detection Rules
 

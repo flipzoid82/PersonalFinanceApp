@@ -2,7 +2,12 @@
 
 ## Product purpose
 
-The application is an owner-only household financial control system. It helps the owner understand what happened, what is happening, what is about to happen, and what the household can safely do next.
+The application is an owner-only household financial control system with two complementary purposes:
+
+1. bounded complete financial awareness across approved accounts, transactions, assets, debts, investments, obligations, imports, and planning information; and
+2. active income planning and budgeting that helps the owner decide what available and expected money needs to accomplish.
+
+“Complete” does not imply tax preparation, insurance or estate optimization, trading or investment advice, legal advice, or another financial domain that the approved roadmap does not include. The app helps the owner understand what happened, what is happening, what is about to happen, and what the household can safely do next.
 
 The product's north-star question is:
 
@@ -71,7 +76,7 @@ Every budget state, projection, funding warning, and Safe-to-Spend result must i
 
 ### No double counting
 
-Transfers, credit-card payments, pending-to-posted replacements, refunds, budget allocations, and Calendar commitments must be reconciled so the same economic activity is never counted twice.
+Transfers, credit-card payments, pending-to-posted replacements, refunds, budget allocations, Calendar commitments, planned saving, funding transfers, and reserve protection must be reconciled so the same economic commitment reduces financial capacity at most once.
 
 ## Household-control capabilities
 
@@ -83,23 +88,30 @@ The owner opts specific checking and savings accounts into household planning. I
 
 ### Transaction truth and review
 
-Every reportable transaction should have one effective classification with provenance and confidence:
+Every eligible transaction should resolve through one canonical effective interpretation with provenance and deterministic certainty states:
 
 - merchant or description;
-- household category;
-- financial role, including income, expense, transfer, refund or reimbursement, credit-card payment, investment activity, debt payment, ignored, or unresolved;
+- stable transaction-purpose category where its role requires one;
+- financial role, including income, expense, transfer, refund-like reimbursement, credit-card payment, investment activity, debt payment, borrowing proceeds, ignored, or unresolved;
+- source-aware account-level economic direction: inflow, outflow, or unknown;
 - pending, posted, or canceled status;
 - whether it is linked to another movement or refund;
 - whether it has split category allocations;
 - whether owner review is required.
 
-High-confidence deterministic classifications may enter live totals automatically. Low-confidence, conflicting, ambiguous, high-impact, or structurally uncertain transactions enter a lightweight Transaction Inbox. Owner corrections always take precedence without mutating provider data.
+Explicit owner decisions, owner-confirmed deterministic rules, and unambiguous versioned system mappings may enter live totals automatically. Provider-only, conflicting, ambiguous, unsupported, or structurally uncertain activity enters a lightweight Transaction Inbox. Amount may affect attention and ordering but does not by itself invalidate a resolved transaction or block reporting. Owner corrections always take precedence without mutating provider data.
 
 The Inbox must support role/category review, exact split allocations, transfer and card-payment pairing, refund/reimbursement linkage, exclusion, and narrowly scoped deterministic rules for future similar activity.
 
-### Budgets and live category health
+### Budget and income planning
 
-V1 supports stable household budget categories and monthly allocations in the owner's configured planning time zone.
+Household Control 2 provides a prominent planning command center, provisionally called **Budget & Plan**. It supports planned income, spending allocations, fixed obligations, protected reserves, generic planned saving, generic owner-entered extra debt-principal allocation, and intentionally unassigned income. Zero-based budgeting is supported but optional; the owner may retain an explicit buffer.
+
+Expected or planned income supports a future plan but does not become current liquidity or increase current Safe-to-Spend. A planned savings allocation reduces discretionary planning capacity but does not prove that saving has been funded. Funding requires approved evidence such as an authoritative balance state, reconciled transfer, or explicit owner-confirmed funding event.
+
+Stable HC1 transaction-purpose categories describe what actual activity was for. HC2 planning destinations describe what planned income is intended to accomplish. Savings, reserves, goals, and extra debt principal are planning destinations, not fabricated spending categories.
+
+V1 supports monthly allocations in the owner's configured planning time zone.
 
 For each category, show:
 
@@ -117,7 +129,7 @@ Allocations may be fixed, flexible, or protected. Reallocation between flexible 
 
 ### Recurring income and expenses
 
-The existing recurring engine remains the basis for expected income, bills, subscriptions, debt payments, credit-card payments, and recurring transfers.
+The existing recurring engine remains the basis for expected income, bills, subscriptions, debt payments, credit-card payments, and recurring transfers. HC2 planning must reuse or explicitly reconcile with existing Bills behavior, recurring streams, and Calendar occurrences rather than create a second independent obligation truth source.
 
 Recurring items retain typical and expected amounts, frequency and expected date, prediction confidence, predicted posting date versus confirmed due date, active/inactive and review state, and owner correction precedence.
 
@@ -192,7 +204,7 @@ The intended direction is:
 
 1. **Home** — Safe-to-Spend, actions, upcoming activity, budget health, and confidence.
 2. **Transactions** — Transaction Inbox and complete ledger.
-3. **Plan** — budgets, bills, Calendar, cash-flow projections, and funding gaps.
+3. **Budget & Plan** — provisional label for budgets, bills, Calendar, cash-flow projections, goals, and funding gaps. Final navigation wording remains a later UX decision.
 4. **Accounts** — balances, connection health, planning participation, routing, and reserves.
 5. **Wealth** — Investments and Net Worth.
 6. **Settings** — connections, imports, theme, session, and preferences.
@@ -215,18 +227,21 @@ Milestone 11 statement/CSV imports remain secondary Settings functionality. Mile
 
 Manual property, vehicles, assets, mortgages, loans, debts, accounts, and snapshots remain available for wealth reporting. They do not become spendable cash unless represented by an opted-in liquid planning account.
 
+Debt tracking is an approved later capability for credit cards, auto loans, mortgages, student loans, personal loans, manual debts, and other approved debt types. Current Accounts and Net Worth may continue showing supported debt balances. HC5 owns the dedicated Debt Tracker experience, balance/paydown progress where sufficient authoritative or historical evidence exists, named payoff goals, payoff projections, and debt-versus-saving tradeoffs. Provider balances, owner-entered contractual facts, calculated projections, estimates, confirmed values, and freshness must remain visibly distinct. If evidence is insufficient to calculate progress reliably, show the available balance/history without fabricating progress. The app must never invent APR, interest rate, minimum payment, original principal, due date, maturity, payoff term, statement balance, or another contractual fact.
+
 ## Later capabilities
 
 The following follow the first useful Safe-to-Spend version:
 
+- named savings and debt goals;
+- sinking funds and irregular-expense planning;
+- target amounts and dates, required contributions, progress, feasibility, and scenario tradeoffs;
+- debt payoff projections and explicit debt-versus-saving tradeoffs;
 - in-app warning records and lifecycle;
 - budget-pace, reserve, funding, and stale-data warnings;
 - weekly household digest;
 - external warning delivery after scheduler and security design;
 - household membership, permissions, and privacy-safe summaries;
-- sinking funds and irregular-expense reserves;
-- debt and savings goals;
-- explicit scenario tradeoffs and surplus allocation;
 - deeper forecasting and recommendations.
 
 ## Out of scope through Safe-to-Spend V1
