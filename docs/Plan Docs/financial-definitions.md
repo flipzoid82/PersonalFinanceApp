@@ -66,13 +66,14 @@ A source transaction is the provider/imported observation as received: identifie
 
 ### Canonical effective transaction classification
 
-The canonical effective classification is the single owner-scoped interpretation used consistently by Transactions, Overview, Spending, recurrence, budgets, projections, and Safe-to-Spend.
+The canonical effective transaction interpretation is the single owner-scoped meaning used consistently by Transactions, Overview, Spending, recurrence, relevant Calendar matching, budgets, projections, and Safe-to-Spend.
 
 It includes:
 
 - effective merchant/description;
-- effective household category;
+- stable transaction-purpose category where the effective role requires one;
 - effective financial role;
+- account-level economic direction;
 - classification source and version;
 - confidence and evidence/reason;
 - review state;
@@ -82,26 +83,26 @@ It includes:
 Precedence is:
 
 1. explicit owner correction;
-2. owner-approved deterministic rule;
-3. high-confidence deterministic system classification;
-4. provider evidence;
-5. unresolved/uncategorized.
+2. owner-confirmed deterministic rule;
+3. unambiguous versioned deterministic system classification;
+4. provider evidence where permitted;
+5. unresolved.
 
 The canonical classification must not create a second contradictory interpretation for recurrence or reporting.
 
 ### Classification confidence and provenance
 
-Confidence describes how strongly evidence supports the effective role/category. Provenance identifies whether the value came from owner review, an owner rule, deterministic inference, or provider data, plus the applicable version/reason.
+Certainty describes how strongly deterministic evidence supports role, category, direction, or relationship independently. Provenance identifies whether a value came from an owner override, owner-confirmed rule, versioned deterministic system mapping, provider evidence, or remains unresolved.
 
-High-confidence deterministic classifications may enter live totals without manual review. Low-confidence, conflicting, ambiguous, high-impact, or structurally uncertain activity enters the Transaction Inbox.
+Do not invent opaque percentages. Missing provider confidence is `UNKNOWN`, not zero. Explicit owner decisions, owner-confirmed deterministic rules, and unambiguous versioned system mappings may enter live totals. Provider-only, conflicting, ambiguous, unsupported, or structurally uncertain activity enters the Transaction Inbox.
 
-Confidence thresholds remain an implementation decision until Household Control 1, but they must be deterministic, tested, explainable, and versioned.
+Amount may affect attention and Inbox ordering but does not alone make a resolved transaction unresolved or remove it from finalized reporting.
 
 ### Transaction Inbox
 
 The Transaction Inbox is an exception queue for activity requiring owner attention. It is not a second ledger and does not require review of every transaction.
 
-An Inbox item must state why attention is needed and support the applicable role/category correction, split, movement pair, refund/reimbursement link, exclusion, or future deterministic rule.
+An Inbox item must state why attention is needed and support the applicable role/category/direction correction, split, movement pair, refund/reimbursement link, exclusion, or future deterministic rule. Inbox membership is derived from durable unresolved state; no separate Inbox table is initially required.
 
 ### Financial roles
 
@@ -114,20 +115,35 @@ Effective roles include:
 - Credit-card payment
 - Investment activity
 - Debt payment
+- Borrowing proceeds
 - Ignored
-- Uncategorized/unresolved
+- Unresolved
 
 Roles determine financial meaning. Source amount sign alone is not a provider-neutral direction signal.
 
+Borrowing proceeds mean cash was received while a liability was created or increased. They are neither household income nor an internal transfer. `UNCATEGORIZED` may remain only for compatibility and is not a future economically meaningful role.
+
+Reimbursement uses refund-like role semantics in initial HC1 where economically appropriate. A typed `REIMBURSEMENT` relationship distinguishes third-party reimbursement from a merchant refund. A separate reimbursement role is not required unless later implementation evidence demonstrates a distinct downstream economic calculation.
+
+### Account-level economic direction
+
+Canonical account-level direction is:
+
+- **Inflow** — value enters or reduces debt on the observed account according to its source adapter and account context;
+- **Outflow** — value leaves or increases debt on the observed account according to its source adapter and account context;
+- **Unknown** — the source and account context cannot establish direction safely.
+
+Household neutrality is not an account-level direction. Internal-transfer and card-payment legs remain an outflow and inflow while their relationship determines household effect. Direction must be deterministic, source-adapter-aware, versioned, auditable, efficiently queryable, reproducible after reruns, and owner-overridable. Raw amount sign remains immutable evidence and is never a provider-neutral rule.
+
 ### Split transaction allocation
 
-A split allocation assigns exact portions of one transaction to multiple household categories. In the transaction currency:
+A split allocation assigns exact portions of one category-bearing transaction to multiple stable transaction-purpose categories. In the transaction currency:
 
 ```text
 sum(split allocation magnitudes) = reportable transaction magnitude
 ```
 
-Splits do not create additional bank transactions or modify source data. Rounding remainders are not allowed to disappear; reconciliation must be exact at the supported currency precision.
+Persisted allocation rows are required only for actual splits. An unsplit category-bearing transaction still resolves through the same effective-allocation abstraction as one allocation. Splits do not create additional bank transactions or modify source data. Rounding remainders are not allowed to disappear; reconciliation must be exact at the supported currency precision.
 
 ### Internal transfer pair
 
@@ -143,7 +159,7 @@ The later checking-to-card payment is cash movement and debt settlement. It affe
 
 ### Refund/reimbursement linkage
 
-A linked refund or reimbursement reduces the relevant original allocation when the refund/reimbursement posts. V1 is cash-based: closed prior periods are not rewritten automatically, and reimbursements are not ordinary income by default.
+A linked refund or reimbursement reduces the relevant original allocation when the refund/reimbursement posts. The source refund/reimbursement remains an independent transaction, while a typed relationship records its meaning and applied amount. V1 is cash-based: closed prior periods are not rewritten automatically, and reimbursements are not ordinary income by default.
 
 If the original transaction was split, the owner/system must allocate the refund conservatively across the relevant original allocations. Unclear linkage enters review.
 
@@ -182,21 +198,27 @@ Never subtract a pending outflow twice. Pending income never increases current S
 
 ## Budget definitions
 
-### Budget category
+### Transaction-purpose category
 
-A budget category is a stable owner-controlled household purpose such as groceries, dining, utilities, or household essentials. It is independent of provider category codes, which may be evidence for classification.
+A transaction-purpose category is a stable owner-controlled income or expense purpose such as Groceries, Dining, Utilities, Payroll, or Benefits. It describes what actual activity was for and is independent of provider category codes, which remain source evidence.
 
-The exact initial category taxonomy remains undecided.
+The approved starter expense taxonomy is Housing, Utilities, Groceries, Dining, Transportation, Health, Insurance, Household, Personal, Shopping, Entertainment, Subscriptions, Education/Childcare, Travel, Taxes, Fees & Interest, and Other Expense. The approved income taxonomy is Payroll, Benefits, Interest Income, and Other Income.
+
+Starter categories have stable system identity while owner rename, deactivation, custom ordering, and added categories remain authoritative. Repeated initialization must not duplicate, reactivate, rename, or reorder owner-customized categories. `Uncategorized` and `Mixed` are not permanent categories used to hide unresolved meaning; mixed-purpose transactions use exact splits.
+
+### Planning destination
+
+A planning destination describes what planned income is intended to accomplish. It may reference a transaction-purpose category for spending, but it may also represent a fixed obligation, protected reserve, generic planned saving, generic extra debt-principal allocation, or intentionally unassigned income. Saving, reserves, goals, and extra principal are not fabricated transaction-purpose categories.
 
 ### Budget allocation
 
-A budget allocation is the exact amount assigned to a category for a defined period. V1 uses monthly allocations in the owner's planning time zone.
+A budget allocation is the exact amount assigned to a planning destination for a defined period. V1 uses monthly allocations in the owner's planning time zone.
 
 Budgets are plans, not bank balances. Allocating $500 to groceries does not move or reserve money at an institution.
 
 ### Fixed obligation
 
-A fixed obligation is a non-discretionary or specifically dated commitment, such as rent, a mortgage, insurance, or a contractual debt payment. It is ordinarily represented through a routed Calendar event and must not also be subtracted as an indistinguishable flexible budget commitment.
+A fixed obligation is a non-discretionary or specifically dated commitment, such as rent, a mortgage, insurance, or a contractual debt payment. HC2 must reuse or explicitly reconcile existing Bills behavior, recurring streams, owner corrections, and Calendar occurrences. Bills is a product surface/domain over approved recurring and Calendar concepts, not an assumption that a separate `Bill` table exists. The obligation must not be duplicated as a second truth source or subtracted as an indistinguishable flexible budget commitment.
 
 ### Flexible spending allocation
 
@@ -236,7 +258,7 @@ The implementation must handle early-period instability, zero allocations, refun
 
 ### Projected spending
 
-Projected spending estimates end-of-period spending from reviewed/high-confidence activity and elapsed time. It must expose its method, coverage, and uncertainty and must not claim precision when data is insufficient.
+Projected spending estimates end-of-period spending from reviewed or deterministically resolved activity and elapsed time. It must expose its method, coverage, and uncertainty and must not claim precision when data is insufficient.
 
 ### Budget period and rollover
 
@@ -270,6 +292,23 @@ Expected income is a future Calendar event supported by recurring history, relia
 
 Pending income does not increase current Safe-to-Spend. Eligible expected income may enter a future dated projection according to its confidence/commitment policy. The exact uncertain-event threshold remains undecided.
 
+### Planned income
+
+Planned income is an owner planning input or approved projection used to construct a future Budget & Income Plan. It may be assigned among spending allocations, fixed obligations, protected reserves, generic planned saving, generic extra debt-principal allocation, and intentionally unassigned income.
+
+```text
+intentionally_unassigned_income = planned_income
+                                  - spending_allocations
+                                  - fixed_obligations
+                                  - protected_reserves
+                                  - planned_saving
+                                  - planned_extra_debt_principal
+```
+
+All components use exact Decimal arithmetic. A zero result supports zero-based budgeting; a positive result is a valid intentional buffer.
+
+Planned or expected income is not current liquidity. It does not increase current Safe-to-Spend until applicable cash is actually available under approved account-routing, balance, freshness, and pending policies. Zero-based assignment is optional; an explicit unassigned buffer is valid.
+
 ### Routed obligation
 
 A routed obligation is a bill, subscription, debt payment, credit-card payment, or other committed outflow assigned to the planning account expected to pay it.
@@ -294,6 +333,12 @@ A pay-cycle boundary is derived from eligible expected income events and identif
 
 ## Funding definitions
 
+### Planned saving and funded saving
+
+Planned saving is a planning destination that reduces discretionary planning capacity. It does not prove that money has been saved.
+
+Funded saving requires approved evidence such as an authoritative balance state, reconciled transfer, explicit owner-confirmed funding event, or another approved authoritative mechanism. A planned saving allocation, its funding transfer, and reserve or goal protection must retain lineage so they do not independently reduce capacity more than once.
+
 Every routed obligation receives one effective funding status:
 
 - **Funded** — projected paying-account balance remains above required reserve after the obligation.
@@ -313,6 +358,12 @@ A commitment is a future or remaining amount deliberately excluded from discreti
 
 A commitment is not necessarily an expense or transaction.
 
+### Source-qualified debt information
+
+Debt balances and terms must identify whether each value is provider-authoritative, owner-entered, calculated, estimated, confirmed, and fresh. The application must not invent APR, interest rate, minimum payment, original principal, due date, maturity, payoff term, statement balance, or another contractual fact.
+
+Debt principal repayment is not silently treated as ordinary spending. Separately evidenced interest and fees are expenses. Generic extra-principal planning belongs to HC2; named payoff goals, projections, strategies, and debt-versus-saving tradeoffs belong to HC5.
+
 ### Commitment deduplication
 
 Each economic commitment must have lineage and a stable identity sufficient to prevent double subtraction.
@@ -324,6 +375,7 @@ Examples:
 - both legs of a transfer cannot reduce household cash;
 - a posted transaction cannot remain reserved as an unmatched future occurrence;
 - a protected reserve is subtracted once, not per overlapping view.
+- a planned savings allocation, its later funding transfer, and protection of the funded balance cannot each subtract the same commitment independently.
 
 ## Safe-to-Spend
 

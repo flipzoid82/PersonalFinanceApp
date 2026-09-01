@@ -8,7 +8,7 @@ The product north star is:
 
 > **What can we safely spend right now without creating a problem later?**
 
-Safe-to-Spend V1 remains owner-only. Household sharing, external warnings, deeper goals, and automation follow only after the first useful household-control version is correct and explainable.
+Safe-to-Spend V1 remains owner-only. Goals and debt tradeoffs, warnings, household sharing, and automation follow only in their approved sequence after the first useful household-control version is correct and explainable.
 
 ## Cross-milestone invariants
 
@@ -18,6 +18,8 @@ Safe-to-Spend V1 remains owner-only. Household sharing, external warnings, deepe
 - Transfers and credit-card payments never duplicate spending.
 - Pending and posted activity is reconciled without duplicate liquidity effects.
 - Each commitment is subtracted at most once.
+- Planned income is distinct from current liquidity, and planned saving is distinct from funded saving.
+- HC1 transaction-purpose categories are distinct from HC2 planning destinations.
 - Only opted-in checking/savings accounts contribute spendable cash.
 - Investments, credit capacity, property, and debt capacity never increase Safe-to-Spend.
 - Consolidated V1 planning uses USD and the owner's configured local planning time zone.
@@ -77,37 +79,51 @@ Canonical Product Requirements, Financial Definitions, Build Plan, Overview dire
 
 ### Outcome
 
-Every reportable transaction has one auditable effective meaning, and ambiguous activity is easy to resolve.
+Every financially relevant transaction can resolve to one auditable effective interpretation, and ambiguous activity is easy to resolve.
 
 ### Scope
 
-- canonical effective classification and provenance;
-- classification confidence and coverage reporting;
+- explicit classification, finalized-reporting, Inbox, recurrence, relationship, allocation, and later-planning eligibility predicates;
+- stable owner-scoped expense and income `TransactionCategory` identity;
+- canonical source-aware economic direction: inflow, outflow, or unknown;
+- canonical effective classification, deterministic certainty, and provenance;
 - Transaction Inbox;
 - deterministic classification rules;
 - financial-role and category review;
-- transfer and credit-card-payment pairing;
-- refund/reimbursement linking;
+- suggestion-first transfer and credit-card-payment pairing;
+- typed transfer, credit-card-payment, refund, and reimbursement relationships;
 - exact split transaction allocations;
-- one shared effective classification service for Transactions, Overview, Spending, recurrence, and later budgets;
+- pending-to-posted owner-state continuity;
+- compatibility inventory and deterministic migration for legacy `TransactionOverride.linkedTransactionId` values;
+- one shared effective resolver and allocation abstraction for Transactions, Overview, Spending, recurrence, Calendar matching, and later budgets;
 - owner corrections that always win without mutating provider data.
 
 ### Approved behavior
 
-- high-confidence deterministic classification may enter live totals automatically;
-- low-confidence, conflicting, ambiguous, high-impact, or structurally uncertain activity enters the Inbox;
+- explicit owner decisions, owner-confirmed rules, and unambiguous versioned system mappings may enter live totals automatically;
+- provider-only, conflicting, ambiguous, unsupported, or structurally uncertain activity enters the Inbox;
+- amount may prioritize attention but does not alone block reporting;
+- newly created owner rules apply prospectively by default; historical owner-rule application requires preview and confirmation;
+- controlled deterministic system backfill may classify historical activity without overwriting owner decisions;
+- transfer and card-payment heuristics suggest pairs but do not auto-confirm them;
 - materially unresolved coverage is visible and lowers confidence;
 - minor unresolved coverage may coexist with qualified useful planning information;
 - linked refunds/reimbursements reduce the relevant allocation when they post and are not ordinary income by default.
 
 ### Completion criteria
 
-- all included posted activity has a reviewed or high-confidence effective role;
+- all included posted activity has a reviewed or deterministically resolved effective role;
 - every unresolved item has a visible reason;
+- category-bearing activity resolves through stable transaction-purpose identity;
+- source-aware direction is deterministic, versioned, auditable, efficiently queryable, and owner-overridable;
 - split allocations reconcile exactly to the transaction magnitude;
-- movement pairs do not change household income/spending;
-- pending-to-posted replacement does not duplicate classification or liquidity effects;
+- confirmed movement pairs do not change household income/spending;
+- pending-to-posted replacement preserves nonconflicting owner state and does not duplicate classification, Inbox, Calendar, recurrence, or liquidity effects;
 - sync and classification reruns are idempotent;
+- starter-category bootstrap is idempotent and preserves owner rename, deactivation, and ordering choices;
+- every legacy untyped transaction link is inventoried, safely converted or retained for explicit review, and never discarded merely because typed relationships exist;
+- old/new reporting reconciliation has zero unexplained differences in totals, inclusion, classification, allocation, or relationship results before atomic owner-level cutover;
+- bulk resolver paths avoid per-transaction query loops;
 - owner-scoping, provenance, override precedence, and Decimal behavior have PostgreSQL coverage;
 - shared calculations no longer depend on a recurrence-only classification path.
 
@@ -119,18 +135,22 @@ Every reportable transaction has one auditable effective meaning, and ambiguous 
 - ML/AI classification;
 - multi-user household accounts.
 
-## Household Control 2 — Budget Plan and Live Scoreboard
+## Household Control 2 — Budget & Income Plan
 
 ### Outcome
 
-The owner can see what was spent, what remains, and whether spending pace is safe.
+The owner can plan what expected income needs to accomplish, see what remains intentionally unassigned, and understand live spending progress without treating expected money as current liquidity.
 
 ### Scope
 
-- stable household budget categories;
-- monthly allocations in the owner's planning time zone;
+- planned and expected income for the planning period;
+- monthly spending allocations that reference stable HC1 transaction-purpose categories;
+- fixed obligations reconciled with existing Bills behavior, recurring streams, and Calendar occurrences rather than duplicated as a second obligation truth source;
+- protected reserves;
+- generic planned saving;
+- generic owner-entered extra debt-principal allocation;
+- intentionally unassigned income and optional zero-based budgeting;
 - fixed, flexible, and protected policies;
-- exact transaction allocations and splits;
 - explicit auditable reallocations;
 - category spending and remaining amount;
 - weekly pace derived from the monthly plan;
@@ -140,6 +160,10 @@ The owner can see what was spent, what remains, and whether spending pace is saf
 
 ### Completion criteria
 
+- planned income, assigned amounts, protected amounts, planned saving, planned extra debt reduction, and unassigned income reconcile exactly;
+- expected or pending income does not become current available liquidity;
+- planned saving is not presented as funded without approved evidence;
+- one existing obligation reduces capacity at most once across Bills, recurrence, Calendar, and the plan;
 - category totals reconcile exactly to classified transaction allocations;
 - refunds/reimbursements and exclusions follow canonical definitions;
 - spending pace handles partial periods and incomplete coverage conservatively;
@@ -151,10 +175,11 @@ The owner can see what was spent, what remains, and whether spending pace is saf
 
 - automatic rollover;
 - arbitrary custom budget calendars;
-- sinking funds;
+- named savings goals and sinking funds;
+- payoff schedules, snowball/avalanche analysis, interest-savings optimization, and debt-versus-saving recommendations;
 - external notifications.
 
-## Household Control 3 — Routed Calendar and Account Projections
+## Household Control 3 — Routed Cash Flow
 
 ### Outcome
 
@@ -223,11 +248,29 @@ The app answers what can safely be spent before the next relevant income event a
 - materially unresolved, stale, or unsupported critical inputs fail closed;
 - immaterial unresolved activity is quantified and clearly qualifies the result;
 - the owner can reproduce the number from its explanation;
-- Home, Transactions, Plan, and Accounts answer all ten first-use questions.
+- Home, Transactions, Budget & Plan, and Accounts answer all ten first-use questions.
 
 This milestone completes the **first useful household-control version**.
 
-## Household Control 5 — Early Warnings and Digest
+## Household Control 5 — Goals, Irregular Expenses & Debt Tradeoffs
+
+### Scope
+
+- dedicated Debt Tracker experience for supported credit cards and loans, including source-qualified current balance, known contractual information, freshness, and balance/paydown progress where sufficient authoritative or historical data exists, with links into payoff planning;
+- named savings and debt goals;
+- target amount and date;
+- required contribution calculations;
+- progress and funding evidence;
+- feasibility and explicit scenario comparisons;
+- sinking funds and irregular expenses;
+- debt payoff projections;
+- debt-versus-saving tradeoffs;
+- source-qualified debt balances and contractual facts;
+- no invented APR, minimum payment, original principal, due date, maturity, payoff term, or statement balance.
+
+Current Accounts and Net Worth may continue showing supported debt balances. If source or historical evidence is insufficient to calculate paydown progress reliably, HC5 shows the available balance/history without fabricating progress or contractual facts.
+
+## Household Control 6 — Warnings & Digest
 
 ### Scope
 
@@ -240,7 +283,7 @@ This milestone completes the **first useful household-control version**.
 - weekly household summary;
 - external delivery only after scheduler, privacy, and security design.
 
-## Household Control 6 — Household Coordination
+## Household Control 7 — Household Coordination
 
 ### Scope
 
@@ -251,24 +294,13 @@ This milestone completes the **first useful household-control version**.
 - privacy-safe summaries;
 - transaction attribution where appropriate.
 
-## Household Control 7 — Irregular Expenses, Goals, and Debt Tradeoffs
-
-### Scope
-
-- sinking funds;
-- annual and irregular obligations;
-- reserve progress;
-- unused-budget surplus allocation;
-- debt and savings goals;
-- explicit scenario tradeoffs.
-
 ## Future information architecture
 
 Documented direction, not current implementation:
 
 1. Home
 2. Transactions — Inbox + ledger
-3. Plan — budgets + bills + Calendar + cash-flow projections
+3. Budget & Plan — provisional label for budgets + bills + Calendar + cash-flow projections + goals
 4. Accounts
 5. Wealth — Investments + Net Worth
 6. Settings — connections + imports + preferences

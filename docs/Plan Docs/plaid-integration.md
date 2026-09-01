@@ -15,7 +15,9 @@ Fidelity and Fidelity NetBenefits must not be assumed to work through Plaid.
 - Recurring transaction candidates where available
 - Webhook-driven updates
 
-Plaid supplies source evidence. Provider categories and confidence may inform the canonical effective classification, but they do not overwrite owner corrections or establish a second reporting definition.
+Plaid supplies immutable source evidence. Provider categories and confidence may inform the canonical effective interpretation, but they do not overwrite owner corrections, become the owner transaction-purpose taxonomy automatically, or establish a second reporting definition. Missing provider category confidence is `UNKNOWN`, not zero.
+
+Plaid amount sign is interpreted only through an explicit Plaid source adapter plus account context. Raw signed amounts remain unchanged. The resulting account-level inflow/outflow/unknown direction must be deterministic, versioned, auditable, reproducible, efficiently queryable, and owner-overridable.
 
 ## Bill Calendar Inputs
 
@@ -40,7 +42,7 @@ Future routed cash-flow planning may use Plaid observations only through the sam
 - Otherwise the current balance is reduced by unreconciled pending outflows.
 - The same pending outflow must never be subtracted from an available balance twice.
 - Pending income does not increase current Safe-to-Spend.
-- Pending-to-posted reconciliation must preserve classification/allocation relationships without creating a second effect.
+- Pending-to-posted reconciliation must preserve nonconflicting owner merchant/category/role/direction corrections, notes, exclusion, and valid splits; recompute provider/system evidence; safely repoint valid relationships and Calendar fulfillment; rerun recurrence; and surface owner conflicts without creating a second Inbox, reporting, or liquidity effect.
 - Internal transfer and credit-card-payment pairing changes account projections but not household spending.
 - Data freshness and connection health must qualify or block planning outputs when critical.
 
@@ -64,6 +66,8 @@ Use real institutions only after the complete flow has been tested in Sandbox.
 6. Encrypt and store the access token.
 7. Synchronize normalized account and transaction data.
 8. Process webhooks.
+
+HC1 classification of synchronized transactions must be deterministic, owner-scoped, versioned, idempotent, and safe under repeated sync. A classifier or continuity failure must fail closed to unresolved/review rather than mutate source evidence or leave different downstream consumers using different meanings.
 
 ## Security Requirements
 

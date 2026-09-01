@@ -81,6 +81,8 @@ Show account-specific shortfalls and transfer recommendations. A positive househ
 
 Show unresolved item count, material unresolved amount, and the leading review reasons. Do not imply that every transaction requires review.
 
+Transaction amount may prioritize an existing attention item but does not by itself make resolved activity unreportable.
+
 ### Freshness and confidence
 
 Show:
@@ -107,6 +109,8 @@ The current balance-sheet and historical views remain useful secondary context:
 
 These metrics must not be presented as substitutes for Safe-to-Spend. Investments, property, credit capacity, and unrelated debt capacity never increase spendable cash.
 
+Borrowing proceeds may increase an account balance while creating or increasing a liability. They are not household income and must not inflate income reporting. Internal transfers and credit-card payments affect account cash/debt positions but do not duplicate household income or spending.
+
 ## Current implementation continuity
 
 Until the Household Control milestones implement the new Home experience, the existing Overview behavior remains valid:
@@ -121,6 +125,10 @@ Until the Household Control milestones implement the new Home experience, the ex
 - stale, partial, empty, and error states.
 
 Existing metric links and current responsive ordering remain unchanged by documentation reconciliation.
+
+Household Control 1 will move current-month income, spending, recent-activity interpretation, and category summaries onto the same canonical effective transaction resolver used by Transactions, Spending, recurrence, and relevant Calendar matching. Explicit owner decisions, owner-confirmed rules, and unambiguous versioned system mappings may contribute under the approved policy. Provider-only or unresolved meaning remains visibly qualified.
+
+Before that consumer cutover, legacy and canonical outputs must be reconciled. Every difference in financial totals, transaction inclusion, classification, allocation, or relationship results must be explained as an approved semantic correction, newly resolved activity, or fixed defect; no unexplained difference may remain.
 
 ## Data-state rules
 
@@ -152,10 +160,10 @@ Keep previously loaded data visible where safe, label it as non-current, and sho
 
 Future conceptual links:
 
-- Safe-to-Spend explanation → Plan projection/commitment detail;
+- Safe-to-Spend explanation → Budget & Plan projection/commitment detail;
 - Transaction attention → Transactions Inbox;
-- budget health → Plan budgets;
-- upcoming/funding item → Plan Calendar detail;
+- budget health → Budget & Plan budgets;
+- upcoming/funding item → Budget & Plan Calendar detail;
 - account/freshness issue → Accounts;
 - Investments/Net Worth → Wealth.
 
