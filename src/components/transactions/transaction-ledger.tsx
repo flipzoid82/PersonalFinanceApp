@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 import Link from "next/link";
 import { ActiveTransactionSearch } from "@/components/transactions/active-transaction-search";
+import { TransactionCategoryManager } from "@/components/transactions/transaction-category-manager";
 import { Card } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import {
@@ -42,6 +43,7 @@ function roleTone(role: FinancialRole | null): SemanticTone {
       return "investment";
     case FinancialRole.TRANSFER:
     case FinancialRole.CREDIT_CARD_PAYMENT:
+    case FinancialRole.BORROWING_PROCEEDS:
       return "info";
     default:
       return "muted";
@@ -70,6 +72,8 @@ function roleExplanation(role: FinancialRole | null) {
       return "Card payment · not spending";
     case FinancialRole.INVESTMENT_ACTIVITY:
       return "Investment activity · not income or spending";
+    case FinancialRole.BORROWING_PROCEEDS:
+      return "Borrowing proceeds · inflow, not income";
     case FinancialRole.IGNORED:
       return "Ignored · not included in reports";
     default:
@@ -93,6 +97,7 @@ function FilterForm({ ledger }: { ledger: LedgerModel }) {
   return (
     <Card className="mt-6 p-4 sm:p-5">
       <form method="get" className="grid gap-4 lg:grid-cols-6">
+        <input type="hidden" name="view" value={filters.view} />
         <label className="lg:col-span-2">
           <span className="text-sm font-semibold">Merchant or description</span>
           <ActiveTransactionSearch initialValue={filters.search} />
@@ -193,7 +198,11 @@ function FilterForm({ ledger }: { ledger: LedgerModel }) {
             Apply filters
           </button>
           <Link
-            href="/transactions"
+            href={
+              filters.view === "inbox"
+                ? "/transactions?view=inbox"
+                : "/transactions"
+            }
             className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border-default)] px-4 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
           >
             Clear filters
@@ -215,29 +224,46 @@ function TransactionBadges({
 }) {
   const removed = Boolean(transaction.removedAt);
   return (
-    <div className="flex flex-wrap gap-2">
-      <SemanticBadge
-        tone={
-          removed || transaction.status === TransactionStatus.CANCELED
-            ? "muted"
-            : transaction.status === TransactionStatus.PENDING
-              ? "warning"
-              : "positive"
-        }
-      >
-        {removed ? "Removed by provider" : titleCaseEnum(transaction.status)}
-      </SemanticBadge>
-      <SemanticBadge tone={roleTone(transaction.effective.financialRole)}>
-        {roleExplanation(transaction.effective.financialRole)}
-      </SemanticBadge>
-      {transaction.effective.hasLocalOverride ? (
-        <SemanticBadge tone="info">Local override</SemanticBadge>
-      ) : null}
-      {transaction.effective.excludedFromReports ? (
-        <SemanticBadge tone="muted">Excluded from reports</SemanticBadge>
-      ) : null}
-      {transaction.isHistorical ? (
-        <SemanticBadge tone="muted">Historical account</SemanticBadge>
+    <div>
+      <div className="flex flex-wrap gap-2">
+        <SemanticBadge
+          tone={
+            removed || transaction.status === TransactionStatus.CANCELED
+              ? "muted"
+              : transaction.status === TransactionStatus.PENDING
+                ? "warning"
+                : "positive"
+          }
+        >
+          {removed ? "Removed by provider" : titleCaseEnum(transaction.status)}
+        </SemanticBadge>
+        <SemanticBadge tone={roleTone(transaction.effective.financialRole)}>
+          {roleExplanation(transaction.effective.financialRole)}
+        </SemanticBadge>
+        {transaction.effective.hasLocalOverride ? (
+          <SemanticBadge tone="info">Local override</SemanticBadge>
+        ) : null}
+        {transaction.effective.needsReview ? (
+          <SemanticBadge tone="warning">Needs review</SemanticBadge>
+        ) : null}
+        {(transaction.outgoingRelationships?.length ?? 0) +
+          (transaction.incomingRelationships?.length ?? 0) >
+        0 ? (
+          <SemanticBadge tone="warning">Relationship review</SemanticBadge>
+        ) : null}
+        {transaction.effective.excludedFromReports ? (
+          <SemanticBadge tone="muted">Excluded from reports</SemanticBadge>
+        ) : null}
+        {transaction.isHistorical ? (
+          <SemanticBadge tone="muted">Historical account</SemanticBadge>
+        ) : null}
+      </div>
+      {transaction.effective.needsReview &&
+      transaction.effective.reasonCodes.length ? (
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          Attention:{" "}
+          {transaction.effective.reasonCodes.map(titleCaseEnum).join(" · ")}
+        </p>
       ) : null}
     </div>
   );
@@ -291,10 +317,37 @@ function TransactionSummary({
 export function TransactionLedger({ ledger }: { ledger: LedgerModel }) {
   const activeFilters = Object.entries(ledger.filters).some(
     ([key, value]) =>
-      key !== "page" && key !== "sort" && key !== "direction" && Boolean(value),
+      key !== "page" &&
+      key !== "sort" &&
+      key !== "direction" &&
+      key !== "view" &&
+      Boolean(value),
   );
   return (
     <>
+      <nav aria-label="Transaction views" className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/transactions?view=inbox"
+          aria-current={ledger.filters.view === "inbox" ? "page" : undefined}
+          className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border-default)] px-4 font-semibold aria-[current=page]:bg-[var(--surface-subtle)]"
+        >
+          Inbox
+        </Link>
+        <Link
+          href="/transactions"
+          aria-current={ledger.filters.view === "ledger" ? "page" : undefined}
+          className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border-default)] px-4 font-semibold aria-[current=page]:bg-[var(--surface-subtle)]"
+        >
+          Complete ledger
+        </Link>
+      </nav>
+      {ledger.filters.view === "inbox" ? (
+        <Notice tone="info" role="status" className="mt-4">
+          The Inbox shows unresolved, conflicting, or structurally uncertain
+          activity. Amount affects ordering and attention only; it does not make
+          a resolved transaction unreportable.
+        </Notice>
+      ) : null}
       <FilterForm ledger={ledger} />
       {ledger.selectedAccountUnavailable ? (
         <Notice tone="warning" role="status" className="mt-4">
@@ -305,7 +358,11 @@ export function TransactionLedger({ ledger }: { ledger: LedgerModel }) {
       {!ledger.transactions.length ? (
         <Card className="mt-6 p-6">
           <p className="font-semibold">
-            {activeFilters ? "No transactions match" : "No transactions yet"}
+            {ledger.filters.view === "inbox"
+              ? "Transaction Inbox is clear"
+              : activeFilters
+                ? "No transactions match"
+                : "No transactions yet"}
           </p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
             {activeFilters
@@ -314,7 +371,11 @@ export function TransactionLedger({ ledger }: { ledger: LedgerModel }) {
           </p>
           {activeFilters ? (
             <Link
-              href="/transactions"
+              href={
+                ledger.filters.view === "inbox"
+                  ? "/transactions?view=inbox"
+                  : "/transactions"
+              }
               className="mt-4 inline-flex min-h-11 items-center font-semibold underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--focus-ring)]"
             >
               Clear all filters
@@ -454,6 +515,7 @@ export function TransactionLedger({ ledger }: { ledger: LedgerModel }) {
           )}
         </nav>
       ) : null}
+      <TransactionCategoryManager categories={ledger.transactionCategories} />
     </>
   );
 }

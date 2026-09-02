@@ -4,6 +4,10 @@ import type {
   CalendarEventType,
   ConfidenceLevel,
   FinancialRole,
+  EconomicDirection,
+  ClassificationCertainty,
+  ClassificationProvenance,
+  ClassificationReviewState,
   Prisma,
   RecurringFlowType,
   RecurringFrequency,
@@ -31,8 +35,28 @@ export type DetectionTransaction = {
   override: {
     merchantNameOverride: string | null;
     categoryOverride: string | null;
+    transactionCategoryId?: string | null;
+    transactionCategory?: { id: string; name: string } | null;
     financialRoleOverride: FinancialRole | null;
+    economicDirectionOverride?: EconomicDirection | null;
+    reviewedAt?: Date | null;
     excludedFromReports: boolean;
+  } | null;
+  classification?: {
+    classifierVersion: number;
+    financialRole: FinancialRole | null;
+    transactionCategoryId: string | null;
+    transactionCategory: { id: string; name: string } | null;
+    economicDirection: EconomicDirection;
+    roleProvenance: ClassificationProvenance;
+    categoryProvenance: ClassificationProvenance;
+    directionProvenance: ClassificationProvenance;
+    roleCertainty: ClassificationCertainty;
+    categoryCertainty: ClassificationCertainty;
+    directionCertainty: ClassificationCertainty;
+    reviewState: ClassificationReviewState;
+    reasonCodes: string[];
+    deferredUntil: Date | null;
   } | null;
 };
 

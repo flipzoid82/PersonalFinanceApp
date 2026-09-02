@@ -26,7 +26,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "owner:create": "tsx scripts/create-owner.ts",
-    "plaid:repair-accounts": "tsx scripts/repair-plaid-accounts.ts"
+    "plaid:repair-accounts": "tsx scripts/repair-plaid-accounts.ts",
+    "hc1:backfill": "tsx scripts/backfill-transaction-truth.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.1",

@@ -35,7 +35,10 @@ async function ownedEvent(client: Client, ownerId: string, eventId: string) {
         },
       },
       linkedTransaction: {
-        include: { override: { select: { financialRoleOverride: true } } },
+        include: {
+          override: { select: { financialRoleOverride: true } },
+          classification: { select: { financialRole: true } },
+        },
       },
       overrides: { where: { userId: ownerId }, orderBy: { updatedAt: "desc" } },
       recurringStream: {
@@ -52,6 +55,7 @@ async function ownedEvent(client: Client, ownerId: string, eventId: string) {
               linkedTransaction: {
                 include: {
                   override: { select: { financialRoleOverride: true } },
+                  classification: { select: { financialRole: true } },
                 },
               },
             },
@@ -271,7 +275,10 @@ export async function acceptPaymentMatch(
         userId: ownerId,
         status: TransactionStatus.POSTED,
       },
-      include: { override: { select: { financialRoleOverride: true } } },
+      include: {
+        override: { select: { financialRoleOverride: true } },
+        classification: { select: { financialRole: true } },
+      },
     });
     if (!transaction) throw new Error("Posted transaction not found.");
     const used = await tx.calendarEvent.count({

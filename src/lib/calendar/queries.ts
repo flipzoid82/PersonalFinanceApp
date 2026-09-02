@@ -7,6 +7,7 @@ import {
 } from "@/lib/accounts/current";
 import { addUtcDays, startOfUtcDay } from "./dates";
 import type { RawCalendarData } from "./types";
+import { ensureTransactionTruthReady } from "@/lib/transactions/truth";
 
 const transactionSelect = {
   id: true,
@@ -19,6 +20,7 @@ const transactionSelect = {
   postedAt: true,
   status: true,
   override: { select: { financialRoleOverride: true } },
+  classification: { select: { financialRole: true } },
 } as const;
 
 const overrideSelect = {
@@ -36,6 +38,7 @@ export async function getCalendarData(
   ownerId: string,
   now = new Date(),
 ): Promise<RawCalendarData> {
+  await ensureTransactionTruthReady(ownerId);
   const transactionStart = addUtcDays(startOfUtcDay(now), -120);
   const [events, transactions, accounts, recurringStreamCount] =
     await Promise.all([

@@ -10,6 +10,7 @@ export type TransactionSortKey = (typeof TRANSACTION_SORT_KEYS)[number];
 export type TransactionSortDirection = "asc" | "desc";
 
 export type TransactionFilters = {
+  view: "ledger" | "inbox";
   search: string;
   dateFrom: string;
   dateTo: string;
@@ -56,6 +57,7 @@ export function parseTransactionFilters(
   const sortCandidate = bounded(params.sort, 24);
   const directionCandidate = bounded(params.direction, 8);
   return {
+    view: bounded(params.view, 16) === "inbox" ? "inbox" : "ledger",
     search: bounded(params.search, 120),
     dateFrom: dateValue(params.dateFrom),
     dateTo: dateValue(params.dateTo),
@@ -90,7 +92,8 @@ export function parseTransactionFilters(
 export function transactionFilterQuery(filters: TransactionFilters) {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (key !== "page" && value) query.set(key, String(value));
+    if (key !== "page" && !(key === "view" && value === "ledger") && value)
+      query.set(key, String(value));
   }
   return query;
 }

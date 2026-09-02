@@ -31,6 +31,7 @@ const emptyDashboard: DashboardViewModel = {
   netWorthTrend: [],
   trendIsPartial: true,
   sourceHealth: [],
+  transactionCoverage: [],
 };
 
 describe("OverviewDashboard states", () => {

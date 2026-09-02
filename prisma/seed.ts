@@ -21,6 +21,10 @@ import {
   RecurringStatus,
   TransactionStatus,
 } from "@prisma/client";
+import {
+  normalizeCategoryName,
+  STARTER_TRANSACTION_CATEGORIES,
+} from "../src/lib/transactions/taxonomy";
 
 const prisma = new PrismaClient();
 const money = (value: string) => new Prisma.Decimal(value);
@@ -80,6 +84,20 @@ export async function seedDevelopmentData(
           passwordHash: "seed-only-login-disabled",
         },
       }));
+
+    await tx.transactionCategory.createMany({
+      data: STARTER_TRANSACTION_CATEGORIES.map(
+        ([systemKey, kind, name], displayOrder) => ({
+          userId: owner.id,
+          systemKey,
+          kind,
+          name,
+          normalizedName: normalizeCategoryName(name),
+          displayOrder,
+        }),
+      ),
+      skipDuplicates: true,
+    });
 
     const plaidSource = await tx.dataSource.upsert({
       where: { id: "seed_source_plaid" },
@@ -439,10 +457,13 @@ export async function seedDevelopmentData(
         category: "RENT_AND_UTILITIES_WATER",
       });
     }
-    for (const [index, offset] of [-42, -28, -14].entries()) {
+    // Keep recurrence-training history outside the current dashboard month so
+    // these synthetic observations exercise detection without changing the
+    // established current-month Overview totals.
+    for (const [index, offset] of [-56, -42, -28].entries()) {
       await detectionTransaction(`seed_detection_income_${index}`, {
         merchant: "Example Biweekly Employer",
-        amount: "2100.0000",
+        amount: "-2100.0000",
         postedAt: day(offset),
         category: "INCOME_WAGES",
       });
@@ -471,7 +492,7 @@ export async function seedDevelopmentData(
         providerTransactionId: "synthetic-income-001",
         originalName: "SYNTHETIC EMPLOYER PAYROLL",
         merchantName: "Example Employer",
-        amount: money("4250.0000"),
+        amount: money("-4250.0000"),
         postedAt: currentMonthDay(8, 1),
         status: TransactionStatus.POSTED,
         providerCategory: "Deposit",
@@ -551,7 +572,7 @@ export async function seedDevelopmentData(
         providerTransactionId: "synthetic-refund-001",
         originalName: "SYNTHETIC GROCER REFUND",
         merchantName: "Example Grocer",
-        amount: money("25.0000"),
+        amount: money("-25.0000"),
         postedAt: currentMonthDay(1, 6),
         status: TransactionStatus.POSTED,
         providerCategory: "Refund",

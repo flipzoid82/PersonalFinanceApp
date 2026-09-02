@@ -1,5 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/password";
+import {
+  normalizeCategoryName,
+  STARTER_TRANSACTION_CATEGORIES,
+} from "../src/lib/transactions/taxonomy";
 
 const prisma = new PrismaClient();
 
@@ -21,10 +25,23 @@ async function main() {
     );
   const passwordHash = await hashPassword(password);
 
-  await prisma.user.upsert({
+  const owner = await prisma.user.upsert({
     where: { email },
     update: { displayName, passwordHash },
     create: { email, displayName, passwordHash },
+  });
+  await prisma.transactionCategory.createMany({
+    data: STARTER_TRANSACTION_CATEGORIES.map(
+      ([systemKey, kind, name], displayOrder) => ({
+        userId: owner.id,
+        systemKey,
+        kind,
+        name,
+        normalizedName: normalizeCategoryName(name),
+        displayOrder,
+      }),
+    ),
+    skipDuplicates: true,
   });
   console.log(`Owner account configured for ${email}.`);
 }

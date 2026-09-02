@@ -1,9 +1,22 @@
-import { FinancialRole, Prisma, TransactionStatus } from "@prisma/client";
+import {
+  FinancialRole,
+  Prisma,
+  TransactionCategoryKind,
+  TransactionRelationshipState,
+  TransactionRelationshipType,
+  TransactionStatus,
+} from "@prisma/client";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/actions/transactions", () => ({
   updateTransactionOverrideAction: vi.fn(),
+  createClassificationRuleAction: vi.fn(),
+  deferTransactionReviewAction: vi.fn(),
+  replaceTransactionSplitAction: vi.fn(),
+  resolveLegacyRelationshipAction: vi.fn(),
+  setRelationshipStateAction: vi.fn(),
+  createRefundRelationshipAction: vi.fn(),
 }));
 
 import { TransactionDetail } from "./transaction-detail";
@@ -73,7 +86,13 @@ describe("TransactionDetail", () => {
     render(
       <TransactionDetail
         transaction={detail() as never}
-        categories={["Local category"]}
+        categories={[
+          {
+            id: "category-1",
+            name: "Local category",
+            kind: TransactionCategoryKind.EXPENSE,
+          },
+        ]}
         message="Transaction override saved."
       />,
     );
@@ -85,9 +104,7 @@ describe("TransactionDetail", () => {
     ).toBeVisible();
     expect(screen.getByText("ORIGINAL STORE NAME")).toBeVisible();
     expect(screen.getAllByText("Local category").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Category override")).toHaveValue(
-      "Local category",
-    );
+    expect(screen.getByLabelText("Transaction purpose category")).toBeVisible();
     expect(screen.getByLabelText("Financial role override")).toHaveValue(
       "REFUND",
     );
@@ -109,6 +126,43 @@ describe("TransactionDetail", () => {
     expect(screen.getAllByText("Posted").length).toBeGreaterThan(0);
     expect(container.innerHTML).toContain("--semantic-positive-text");
     expect(container.innerHTML).toContain("--semantic-info-text");
+  });
+
+  it("requires an explicit supported type before a legacy link can be confirmed", () => {
+    const transaction = {
+      ...detail(),
+      outgoingRelationships: [
+        {
+          id: "legacy-relationship",
+          type: TransactionRelationshipType.LEGACY_UNTYPED,
+          state: TransactionRelationshipState.NEEDS_REVIEW,
+          appliedAmount: null,
+          targetTransaction: {
+            id: "transaction-2",
+            originalName: "OTHER SYNTHETIC TRANSACTION",
+            merchantName: "Other synthetic transaction",
+            amount: new Prisma.Decimal("45.6700"),
+            currency: "USD",
+          },
+        },
+      ],
+      incomingRelationships: [],
+    };
+    render(
+      <TransactionDetail transaction={transaction as never} categories={[]} />,
+    );
+
+    expect(
+      screen.getByText("Legacy untyped link", { exact: false }),
+    ).toBeVisible();
+    expect(screen.getByText(/has no established economic type/i)).toBeVisible();
+    expect(screen.getByLabelText("Economic relationship type")).toHaveValue("");
+    expect(
+      screen.getByRole("button", { name: "Resolve and confirm" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Confirm relationship" }),
+    ).not.toBeInTheDocument();
   });
 
   it("uses zero-minimum grid tracks so long provider categories do not overflow mobile", () => {
@@ -147,5 +201,32 @@ describe("TransactionDetail", () => {
     expect(
       screen.getByText("RENT_AND_UTILITIES_GAS_AND_ELECTRICITY"),
     ).toBeVisible();
+  });
+
+  it("exposes an accessible exact refund linkage form for eligible expenses", () => {
+    render(
+      <TransactionDetail
+        transaction={detail() as never}
+        categories={[]}
+        refundCandidates={[
+          {
+            id: "expense-1",
+            originalName: "ORIGINAL EXPENSE",
+            merchantName: "Example Expense",
+            amount: new Prisma.Decimal("45.67"),
+            currency: "USD",
+            postedAt: new Date("2026-06-30T00:00:00Z"),
+            effective: {} as never,
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Link an expense refund" }),
+    ).toBeVisible();
+    expect(screen.getByLabelText("Original expense")).toBeVisible();
+    expect(screen.getByLabelText("Relationship type")).toBeVisible();
+    expect(screen.getByLabelText("Applied amount")).toHaveValue("45.6700");
+    expect(screen.getByRole("button", { name: "Link expense" })).toBeVisible();
   });
 });

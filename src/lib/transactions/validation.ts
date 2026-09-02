@@ -1,4 +1,4 @@
-import { FinancialRole } from "@prisma/client";
+import { EconomicDirection, FinancialRole } from "@prisma/client";
 import { z } from "zod";
 
 const idSchema = z.string().trim().min(1).max(128);
@@ -15,9 +15,15 @@ const optionalNotes = z
 
 export const transactionOverrideSchema = z.object({
   transactionId: idSchema,
+  transactionCategoryId: z
+    .union([idSchema, z.literal(""), z.null()])
+    .transform((value) => value || null),
   categoryOverride: optionalCategory,
   financialRoleOverride: z
     .union([z.nativeEnum(FinancialRole), z.literal("")])
+    .transform((value) => value || null),
+  economicDirectionOverride: z
+    .union([z.nativeEnum(EconomicDirection), z.literal(""), z.null()])
     .transform((value) => value || null),
   notes: optionalNotes,
   excludedFromReports: z.boolean(),

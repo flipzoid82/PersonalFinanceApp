@@ -12,6 +12,8 @@ import {
 } from "@prisma/client";
 import { db } from "@/lib/db";
 import { currentAccountStateWhere } from "@/lib/accounts/current";
+import { TRANSACTION_CLASSIFIER_VERSION } from "@/lib/transactions/classifier";
+import { ensureTransactionTruthReady } from "@/lib/transactions/truth";
 import {
   CONFIDENCE_THRESHOLDS,
   DETECTION_VERSION,
@@ -496,6 +498,7 @@ export async function runRecurringDetection(
 ) {
   const database = options.database ?? db;
   const now = options.now ?? new Date();
+  await ensureTransactionTruthReady(ownerId, database);
   return database.$transaction(
     async (tx) => {
       await tx.$queryRaw<
@@ -511,6 +514,9 @@ export async function runRecurringDetection(
             userId: ownerId,
             ...currentAccountStateWhere(),
           },
+          classification: {
+            is: { classifierVersion: TRANSACTION_CLASSIFIER_VERSION },
+          },
         },
         include: {
           account: {
@@ -525,8 +531,17 @@ export async function runRecurringDetection(
             select: {
               merchantNameOverride: true,
               categoryOverride: true,
+              transactionCategoryId: true,
+              transactionCategory: { select: { id: true, name: true } },
               financialRoleOverride: true,
+              economicDirectionOverride: true,
+              reviewedAt: true,
               excludedFromReports: true,
+            },
+          },
+          classification: {
+            include: {
+              transactionCategory: { select: { id: true, name: true } },
             },
           },
         },

@@ -1,4 +1,9 @@
-import { FinancialRole } from "@prisma/client";
+import {
+  ClassificationProvenance,
+  EconomicDirection,
+  FinancialRole,
+  Prisma,
+} from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import { effectiveTransactionValues } from "./effective";
 
@@ -21,9 +26,29 @@ describe("effective transaction values", () => {
       merchant: "Owner merchant",
       category: "Owner category",
       financialRole: FinancialRole.REFUND,
+      categoryProvenance: ClassificationProvenance.OWNER_OVERRIDE,
       notes: "Owner note",
       excludedFromReports: true,
       hasLocalOverride: true,
+    });
+  });
+
+  it("requires review when an effective owner role conflicts with source-adapted direction", () => {
+    expect(
+      effectiveTransactionValues({
+        originalName: "Refund",
+        merchantName: "Example merchant",
+        providerCategory: "Refund",
+        amount: new Prisma.Decimal("25"),
+        override: {
+          categoryOverride: "Groceries",
+          financialRoleOverride: FinancialRole.REFUND,
+        },
+      }),
+    ).toMatchObject({
+      economicDirection: EconomicDirection.OUTFLOW,
+      needsReview: true,
+      reasonCodes: expect.arrayContaining(["ROLE_DIRECTION_CONFLICT"]),
     });
   });
 
@@ -35,13 +60,14 @@ describe("effective transaction values", () => {
         providerCategory: null,
         override: null,
       }),
-    ).toEqual({
+    ).toMatchObject({
       merchant: "Original",
       category: "Uncategorized",
       financialRole: null,
       notes: null,
       excludedFromReports: false,
       hasLocalOverride: false,
+      needsReview: true,
     });
   });
 });

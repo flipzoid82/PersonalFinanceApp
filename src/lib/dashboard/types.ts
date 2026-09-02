@@ -6,10 +6,14 @@ import type {
   CalendarEventStatus,
   CalendarEventType,
   ConfidenceLevel,
+  ClassificationCertainty,
+  ClassificationProvenance,
+  ClassificationReviewState,
   ConnectionStatus,
   DataSourceStatus,
   DataSourceType,
   FinancialRole,
+  EconomicDirection,
   InvestmentSource,
   Prisma,
   TransactionStatus,
@@ -68,9 +72,36 @@ export type DashboardTransaction = {
   override: {
     merchantNameOverride: string | null;
     categoryOverride: string | null;
+    transactionCategoryId?: string | null;
+    transactionCategory?: { id: string; name: string } | null;
     financialRoleOverride: FinancialRole | null;
+    economicDirectionOverride?: EconomicDirection | null;
+    reviewedAt?: Date | null;
     excludedFromReports: boolean;
   } | null;
+  classification?: {
+    financialRole: FinancialRole | null;
+    transactionCategoryId: string | null;
+    transactionCategory: { id: string; name: string } | null;
+    economicDirection: EconomicDirection;
+    roleProvenance: ClassificationProvenance;
+    categoryProvenance: ClassificationProvenance;
+    directionProvenance: ClassificationProvenance;
+    roleCertainty: ClassificationCertainty;
+    categoryCertainty: ClassificationCertainty;
+    directionCertainty: ClassificationCertainty;
+    reviewState: ClassificationReviewState;
+    reasonCodes: string[];
+    deferredUntil: Date | null;
+  } | null;
+  allocations?: Array<{
+    id: string;
+    transactionCategoryId: string;
+    transactionCategory: { id: string; name: string };
+    amount: Prisma.Decimal;
+    displayOrder: number;
+    provenance: ClassificationProvenance;
+  }>;
 };
 
 export type DashboardCalendarEvent = {
@@ -255,4 +286,12 @@ export type DashboardViewModel = {
   netWorthTrend: NetWorthPoint[];
   trendIsPartial: boolean;
   sourceHealth: SourceHealth[];
+  transactionCoverage: Array<{
+    currency: string;
+    totalCount: number;
+    resolvedCount: number;
+    unresolvedCount: number;
+    unresolvedAmount: Prisma.Decimal;
+    resolvedPercent: Prisma.Decimal;
+  }>;
 };

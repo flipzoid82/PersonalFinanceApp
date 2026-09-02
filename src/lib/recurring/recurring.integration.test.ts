@@ -28,6 +28,11 @@ import {
 vi.mock("server-only", () => ({}));
 
 import { runRecurringDetection } from "./persistence";
+import {
+  ensureTransactionTruthReady,
+  TRANSACTION_TRUTH_VERSION,
+} from "@/lib/transactions/truth";
+import { TRANSACTION_CLASSIFIER_VERSION } from "@/lib/transactions/classifier";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const describeDatabase = testDatabaseUrl ? describe : describe.skip;
@@ -167,6 +172,87 @@ describeDatabase("Milestone 7 recurring detection integration", () => {
       streamsCreated: 0,
       projectionsCreated: 0,
     });
+  });
+
+  it("repairs incremental readiness gaps before recurring detection", async () => {
+    const fixture = await ownerFixture("incremental-readiness");
+    await ensureTransactionTruthReady(fixture.owner.id, prisma);
+    await recurringHistory(fixture);
+
+    const first = await runRecurringDetection(fixture.owner.id, {
+      database: prisma,
+      now: NOW,
+    });
+    expect(first.candidates).toBe(1);
+    expect(
+      await prisma.transactionClassification.count({
+        where: {
+          userId: fixture.owner.id,
+          classifierVersion: TRANSACTION_CLASSIFIER_VERSION,
+        },
+      }),
+    ).toBe(3);
+
+    const stale = await prisma.transactionClassification.findFirstOrThrow({
+      where: { userId: fixture.owner.id },
+    });
+    await prisma.transactionClassification.update({
+      where: { id: stale.id },
+      data: { classifierVersion: TRANSACTION_CLASSIFIER_VERSION - 1 },
+    });
+    const second = await runRecurringDetection(fixture.owner.id, {
+      database: prisma,
+      now: NOW,
+    });
+    expect(second.candidates).toBe(1);
+    expect(
+      await prisma.transactionClassification.findUniqueOrThrow({
+        where: { id: stale.id },
+        select: { classifierVersion: true },
+      }),
+    ).toEqual({ classifierVersion: TRANSACTION_CLASSIFIER_VERSION });
+    expect(
+      await prisma.user.findUniqueOrThrow({
+        where: { id: fixture.owner.id },
+        select: { transactionTruthVersion: true },
+      }),
+    ).toEqual({ transactionTruthVersion: TRANSACTION_TRUTH_VERSION });
+  });
+
+  it("fails closed when a noncanonical transaction appears after readiness verification", async () => {
+    const fixture = await ownerFixture("readiness-race");
+    await ensureTransactionTruthReady(fixture.owner.id, prisma);
+    let injected = false;
+    const database = new Proxy(prisma, {
+      get(target, property, receiver) {
+        if (property === "$transaction")
+          return async (...args: Parameters<PrismaClient["$transaction"]>) => {
+            if (!injected) {
+              injected = true;
+              await recurringHistory(fixture);
+            }
+            return Reflect.apply(target.$transaction, target, args);
+          };
+        const value = Reflect.get(target, property, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as PrismaClient;
+
+    const result = await runRecurringDetection(fixture.owner.id, {
+      database,
+      now: NOW,
+    });
+    expect(result).toMatchObject({ eligibleTransactions: 0, candidates: 0 });
+    expect(
+      await prisma.transactionClassification.count({
+        where: { userId: fixture.owner.id },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma.recurringStream.count({
+        where: { userId: fixture.owner.id },
+      }),
+    ).toBe(0);
   });
 
   it("upserts streams and bounded projections idempotently across repeated and concurrent runs", async () => {
