@@ -16,6 +16,7 @@ The existing Calendar is a strong prediction/correction foundation. Household Co
 - Every projection change must have source, date, amount, certainty, and inclusion lineage.
 - No event or commitment may affect a projection twice.
 - Existing Bills behavior, recurring streams, owner-confirmed corrections, and Calendar occurrences are one obligation foundation. A future Budget & Income Plan may attach allocation/reservation metadata but must not create a second unrelated obligation truth source.
+- Calendar income and obligation occurrences remain source suggestions until the owner explicitly includes them in a plan. A later Calendar correction is shown as plan reconciliation evidence and does not silently rewrite an approved plan amount.
 
 ## Existing views
 
@@ -168,6 +169,8 @@ existing bill or recurring obligation
 ```
 
 These are stages or interpretations of one economic commitment where applicable, not independent amounts to subtract.
+
+When a fixed plan allocation also references an HC1 transaction-purpose category, its planned amount contributes to that category once. Its matched posted transaction contributes to actual category spending once where canonically category-bearing. Merely rendering the same lineage in Bills, Calendar, and Budget never creates another deduction.
 
 ## Overdue rules
 

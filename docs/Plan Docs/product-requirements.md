@@ -105,13 +105,15 @@ The Inbox must support role/category review, exact split allocations, transfer a
 
 ### Budget and income planning
 
-Household Control 2 provides a prominent planning command center, provisionally called **Budget & Plan**. It supports planned income, spending allocations, fixed obligations, protected reserves, generic planned saving, generic owner-entered extra debt-principal allocation, and intentionally unassigned income. Zero-based budgeting is supported but optional; the owner may retain an explicit buffer.
+Household Control 2 provides a prominent planning command center, provisionally called **Budget & Plan**. It supports planned income, spending allocations, fixed obligations, protected planning allocations, generic planned saving, generic owner-entered extra debt-principal allocation, and intentionally unassigned income. Zero-based budgeting is supported but optional; the owner may retain an explicit buffer.
 
 Expected or planned income supports a future plan but does not become current liquidity or increase current Safe-to-Spend. A planned savings allocation reduces discretionary planning capacity but does not prove that saving has been funded. Funding requires approved evidence such as an authoritative balance state, reconciled transfer, or explicit owner-confirmed funding event.
 
+Calendar-backed expected-income occurrences are planning suggestions, not automatic plan entries. Confirmed and predicted income both require an explicit owner inclusion action, and predicted income retains its confidence label. A plan retains the owner-approved amount and source lineage; later Calendar changes are shown as reconciliation differences rather than silently rewriting the plan. Manual planned income remains supported.
+
 Stable HC1 transaction-purpose categories describe what actual activity was for. HC2 planning destinations describe what planned income is intended to accomplish. Savings, reserves, goals, and extra debt principal are planning destinations, not fabricated spending categories.
 
-V1 supports monthly allocations in the owner's configured planning time zone.
+V1 supports monthly allocations in one explicitly owner-confirmed IANA planning time zone. HC2 and existing month-based Overview and Spending reporting use the same owner-local month boundaries so “this month” has one meaning. Provider timestamps and Calendar date-only values remain unchanged at their source boundaries.
 
 For each category, show:
 
@@ -125,11 +127,13 @@ For each category, show:
 - classification coverage and confidence;
 - transactions that produced the result.
 
-Allocations may be fixed, flexible, or protected. Reallocation between flexible categories is explicit and auditable. Rollover is explicit initially, not automatic. Arbitrary custom budget calendars are outside V1.
+Allocations may be fixed, flexible, or protected. Reallocation between flexible categories is explicit and auditable. Rollover is explicit initially, not automatic. An accepted rollover is a separately identified signed opening category balance, not current-period planned income, current liquidity, or proof of funding. It changes category availability while leaving the current-period planned-income reconciliation unchanged. Positive carryover remains owner-declared and funding-unverified until later routing/funding work can establish it; negative carryover reduces category availability. Arbitrary custom budget calendars are outside V1.
 
 ### Recurring income and expenses
 
 The existing recurring engine remains the basis for expected income, bills, subscriptions, debt payments, credit-card payments, and recurring transfers. HC2 planning must reuse or explicitly reconcile with existing Bills behavior, recurring streams, and Calendar occurrences rather than create a second independent obligation truth source.
+
+A Calendar-backed fixed obligation is one planning commitment. When it also references an HC1 transaction-purpose category, its planned amount contributes to that category allocation once and its eventual posted transaction contributes to category spending once. Bills, Calendar, category presentation, and payment fulfillment are views or stages of that same lineage, not independent deductions.
 
 Recurring items retain typical and expected amounts, frequency and expected date, prediction confidence, predicted posting date versus confirmed due date, active/inactive and review state, and owner correction precedence.
 

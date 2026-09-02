@@ -128,6 +128,8 @@ Existing metric links and current responsive ordering remain unchanged by docume
 
 Household Control 1 will move current-month income, spending, recent-activity interpretation, and category summaries onto the same canonical effective transaction resolver used by Transactions, Spending, recurrence, and relevant Calendar matching. Explicit owner decisions, owner-confirmed rules, and unambiguous versioned system mappings may contribute under the approved policy. Provider-only or unresolved meaning remains visibly qualified.
 
+Household Control 2 will move month-based Overview reporting from UTC boundaries to the same explicitly owner-confirmed IANA planning time zone used by Budget & Plan and Spending. This is a reconciled reporting-boundary change only; provider timestamps and Calendar date-only values remain unchanged.
+
 Before that consumer cutover, legacy and canonical outputs must be reconciled. Every difference in financial totals, transaction inclusion, classification, allocation, or relationship results must be explained as an approved semantic correction, newly resolved activity, or fixed defect; no unexplained difference may remain.
 
 ## Data-state rules

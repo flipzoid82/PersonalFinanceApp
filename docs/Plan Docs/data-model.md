@@ -394,7 +394,6 @@ Backfill supports interruption recovery, classifier versioning, concurrent Plaid
 - owner_id
 - planning_time_zone
 - planning_currency, USD for V1
-- optional_household_reserve_floor
 - effective dates / updated timestamps
 
 The profile is owner-only through Safe-to-Spend V1. It is not a multi-user household model.
@@ -414,9 +413,13 @@ Investments, property, credit capacity, and unrelated debt capacity are not elig
 
 ### Budget & Income Plan boundary — planned for HC2
 
-HC2 may add durable plan and allocation concepts for planned income, category spending, fixed obligations, protected reserves, generic saving, generic extra debt principal, and intentionally unassigned income. Exact table design belongs to HC2.
+HC2 may add durable owner planning profile, monthly plan, planned-income entry, allocation, balanced reallocation, and explicit rollover-decision concepts for planned income, category spending, fixed obligations, protected planning allocations, generic saving, generic extra debt principal, and intentionally unassigned income. Intentionally unassigned income is derived rather than stored as a mutable balance.
 
 HC2 fixed obligations reuse or explicitly reconcile existing Bills behavior, `RecurringStream`, `CalendarEvent`, and owner-confirmed corrections. “Bills” describes the existing product surface/domain and does not imply a separate `Bill` model. HC2 may attach planning metadata but must not create an unrelated second obligation truth source.
+
+A fixed plan allocation references one specific Calendar occurrence and may also reference an HC1 transaction-purpose category for category presentation. The allocation is counted once even though the same lineage is visible in Bills, Calendar, and Budget. Planned-income entries may reference an expected-income Calendar occurrence, but source occurrences remain suggestions until explicitly included. Later source changes are reconciliation evidence and do not silently mutate the owner-approved plan amount.
+
+An explicit rollover decision stores source and destination period/allocation lineage, the prior remaining amount snapshot, the owner decision, and a signed opening category balance. The opening balance affects category availability but is not planned income, liquidity, or funding evidence. Reallocations are exact, balanced, append-only movements between eligible flexible allocations.
 
 HC1 `TransactionCategory` describes actual transaction purpose. HC2 planning destinations are broader. HC5 owns named goals, sinking funds, irregular expenses, payoff projections, and debt-versus-saving tradeoffs.
 

@@ -208,7 +208,7 @@ Starter categories have stable system identity while owner rename, deactivation,
 
 ### Planning destination
 
-A planning destination describes what planned income is intended to accomplish. It may reference a transaction-purpose category for spending, but it may also represent a fixed obligation, protected reserve, generic planned saving, generic extra debt-principal allocation, or intentionally unassigned income. Saving, reserves, goals, and extra principal are not fabricated transaction-purpose categories.
+A planning destination describes what planned income is intended to accomplish. It may reference a transaction-purpose category for spending, but it may also represent a fixed obligation, protected planning allocation, generic planned saving, generic extra debt-principal allocation, or intentionally unassigned income. Saving, protected planning allocations, reserve floors, goals, and extra principal are not fabricated transaction-purpose categories.
 
 ### Budget allocation
 
@@ -219,6 +219,8 @@ Budgets are plans, not bank balances. Allocating $500 to groceries does not move
 ### Fixed obligation
 
 A fixed obligation is a non-discretionary or specifically dated commitment, such as rent, a mortgage, insurance, or a contractual debt payment. HC2 must reuse or explicitly reconcile existing Bills behavior, recurring streams, owner corrections, and Calendar occurrences. Bills is a product surface/domain over approved recurring and Calendar concepts, not an assumption that a separate `Bill` table exists. The obligation must not be duplicated as a second truth source or subtracted as an indistinguishable flexible budget commitment.
+
+One Calendar-backed occurrence may have one fixed plan allocation. If that allocation also references a transaction-purpose category, the fixed amount is included once in the category's planned total. The fulfilling posted transaction is included once in actual category spending where its canonical role is category-bearing. Displaying the lineage in Bills, Calendar, and Budget does not create additional commitments.
 
 ### Flexible spending allocation
 
@@ -241,6 +243,7 @@ category_spent = posted expense allocations
                    - linked posted refund/reimbursement allocations
 
 category_remaining = allocation
+                     + signed_opening_rollover
                      + reallocation_in
                      - reallocation_out
                      - category_spent
@@ -263,6 +266,8 @@ Projected spending estimates end-of-period spending from reviewed or determinist
 ### Budget period and rollover
 
 V1 uses monthly allocations, weekly pace derived from the monthly plan, and pay-cycle cash-flow projections derived from expected income. Arbitrary custom calendars are deferred. Rollover requires an explicit owner action initially and is not automatic.
+
+An HC2 rollover decision records a prior category surplus or deficit as a separate signed opening category balance for the next period. It is not current-period planned income and does not alter the current-period planned-income assignment equation. It is not current liquidity or evidence that a positive amount remains funded. A positive owner-declared carryover increases category availability and a negative carryover reduces it; both retain source-period lineage and remain visibly distinct from current allocation.
 
 ## Planning and cash-flow definitions
 
@@ -294,13 +299,15 @@ Pending income does not increase current Safe-to-Spend. Eligible expected income
 
 ### Planned income
 
-Planned income is an owner planning input or approved projection used to construct a future Budget & Income Plan. It may be assigned among spending allocations, fixed obligations, protected reserves, generic planned saving, generic extra debt-principal allocation, and intentionally unassigned income.
+Planned income is an owner planning input or approved projection used to construct a future Budget & Income Plan. It may be assigned among spending allocations, fixed obligations, protected planning allocations, generic planned saving, generic extra debt-principal allocation, and intentionally unassigned income.
+
+An expected-income Calendar occurrence does not become planned income automatically. Confirmed and predicted occurrences may be suggested, but both require explicit owner inclusion. The included plan entry retains its approved amount, certainty, and source identity. Later source changes create a visible reconciliation difference and never silently change the approved plan amount.
 
 ```text
 intentionally_unassigned_income = planned_income
                                   - spending_allocations
                                   - fixed_obligations
-                                  - protected_reserves
+                                  - protected_planning_allocations
                                   - planned_saving
                                   - planned_extra_debt_principal
 ```
