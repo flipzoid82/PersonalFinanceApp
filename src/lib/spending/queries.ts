@@ -4,8 +4,11 @@ import { TransactionStatus } from "@prisma/client";
 import { db } from "@/lib/db";
 import { effectiveTransactionValues } from "@/lib/transactions/effective";
 import { calculateSpending } from "./calculations";
+import { ensureTransactionTruthReady } from "@/lib/transactions/truth";
+import { isFinalizedReportingEligible } from "@/lib/transactions/eligibility";
 
 export async function getSpendingViewModel(ownerId: string, now = new Date()) {
+  await ensureTransactionTruthReady(ownerId);
   const transactions = await db.transaction.findMany({
     where: {
       userId: ownerId,
@@ -21,14 +24,31 @@ export async function getSpendingViewModel(ownerId: string, now = new Date()) {
       amount: true,
       currency: true,
       postedAt: true,
+      status: true,
+      removedAt: true,
       account: { select: { name: true } },
       override: {
         select: {
           merchantNameOverride: true,
           categoryOverride: true,
+          transactionCategoryId: true,
+          transactionCategory: { select: { id: true, name: true } },
           financialRoleOverride: true,
+          economicDirectionOverride: true,
+          reviewedAt: true,
           excludedFromReports: true,
         },
+      },
+      classification: {
+        include: {
+          transactionCategory: { select: { id: true, name: true } },
+        },
+      },
+      allocations: {
+        include: {
+          transactionCategory: { select: { id: true, name: true } },
+        },
+        orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
       },
     },
     orderBy: [{ postedAt: "desc" }, { id: "desc" }],
@@ -38,19 +58,30 @@ export async function getSpendingViewModel(ownerId: string, now = new Date()) {
       const effective = effectiveTransactionValues(transaction);
       return transaction.postedAt &&
         effective.financialRole &&
-        !effective.excludedFromReports
-        ? [
-            {
+        isFinalizedReportingEligible(transaction, effective)
+        ? effective.allocations.length > 0
+          ? effective.allocations.map((allocation) => ({
               id: transaction.id,
               merchant: effective.merchant,
-              category: effective.category,
-              role: effective.financialRole,
-              amount: transaction.amount,
+              category: allocation.category,
+              role: effective.financialRole!,
+              amount: allocation.amount,
               currency: transaction.currency,
-              postedAt: transaction.postedAt,
+              postedAt: transaction.postedAt!,
               accountName: transaction.account.name,
-            },
-          ]
+            }))
+          : [
+              {
+                id: transaction.id,
+                merchant: effective.merchant,
+                category: effective.category,
+                role: effective.financialRole,
+                amount: transaction.amount,
+                currency: transaction.currency,
+                postedAt: transaction.postedAt,
+                accountName: transaction.account.name,
+              },
+            ]
         : [];
     }),
     now,

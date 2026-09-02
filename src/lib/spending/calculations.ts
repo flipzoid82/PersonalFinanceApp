@@ -85,6 +85,23 @@ function median(values: Prisma.Decimal[]) {
     : sorted[middle - 1].plus(sorted[middle]).dividedBy(2);
 }
 
+function sourceTransactions(transactions: SpendingTransaction[]) {
+  const grouped = new Map<string, SpendingTransaction>();
+  for (const transaction of transactions) {
+    const existing = grouped.get(transaction.id);
+    grouped.set(
+      transaction.id,
+      existing
+        ? {
+            ...existing,
+            amount: existing.amount.plus(transaction.amount.abs()),
+          }
+        : { ...transaction, amount: transaction.amount.abs() },
+    );
+  }
+  return [...grouped.values()];
+}
+
 export function findUnusualPurchases(
   all: SpendingTransaction[],
   currentMonth: Date,
@@ -137,6 +154,8 @@ export function calculateSpending(
   const currentTransactions = transactions.filter(
     ({ postedAt }) => postedAt >= currentStart && postedAt < currentEnd,
   );
+  const currentSourceTransactions = sourceTransactions(currentTransactions);
+  const allSourceTransactions = sourceTransactions(transactions);
   const reportableCurrent = currentTransactions.filter(
     ({ role }) =>
       role === FinancialRole.EXPENSE || role === FinancialRole.REFUND,
@@ -170,14 +189,17 @@ export function calculateSpending(
       ({ category }) => category,
       formatTransactionCategory,
     ),
-    merchants: breakdown(reportableCurrent, ({ merchant }) => merchant),
-    largestPurchases: currentTransactions
+    merchants: breakdown(
+      sourceTransactions(reportableCurrent),
+      ({ merchant }) => merchant,
+    ),
+    largestPurchases: currentSourceTransactions
       .filter(({ role }) => role === FinancialRole.EXPENSE)
       .sort((a, b) => b.amount.abs().comparedTo(a.amount.abs()))
       .slice(0, 10),
-    unusualPurchases: findUnusualPurchases(transactions, now),
+    unusualPurchases: findUnusualPurchases(allSourceTransactions, now),
     monthlyTrend: months.map((month) => monthSummary(transactions, month)),
-    transactionCount: currentTransactions.length,
+    transactionCount: currentSourceTransactions.length,
     latestPostedAt:
       [...transactions].sort(
         (a, b) => b.postedAt.getTime() - a.postedAt.getTime(),

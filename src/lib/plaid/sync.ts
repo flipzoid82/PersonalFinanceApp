@@ -7,6 +7,11 @@ import {
 } from "@prisma/client";
 import { db } from "@/lib/db";
 import { runRecurringDetection } from "@/lib/recurring";
+import {
+  bootstrapTransactionCategories,
+  classifyStoredTransactions,
+  preservePendingOwnerState,
+} from "@/lib/transactions/truth";
 import { plaidProviderIdentityKey } from "./account-identity";
 import { decryptAccessToken } from "./crypto";
 import {
@@ -137,6 +142,7 @@ async function upsertTransaction(
           });
   }
 
+  let pendingId: string | null = null;
   if (transaction.pending_transaction_id && !transaction.pending) {
     const pending = await tx.transaction.findFirst({
       where: {
@@ -147,6 +153,7 @@ async function upsertTransaction(
       select: { id: true },
     });
     if (pending) {
+      pendingId = pending.id;
       await tx.transaction.update({
         where: { id: pending.id },
         data: { status: "CANCELED" },
@@ -157,6 +164,7 @@ async function upsertTransaction(
       });
     }
   }
+  return { id: stored.id, pendingId };
 }
 
 export type PlaidSyncResult = {
@@ -462,13 +470,19 @@ export async function syncPlaidConnection(
           });
         }
       }
+      const storedTransactions: Array<{
+        id: string;
+        pendingId: string | null;
+      }> = [];
       for (const transaction of [...changes.added, ...changes.modified])
-        await upsertTransaction(
-          tx,
-          ownerId,
-          connection.id,
-          transaction,
-          reconciledProviderAccountIds.has(transaction.account_id),
+        storedTransactions.push(
+          await upsertTransaction(
+            tx,
+            ownerId,
+            connection.id,
+            transaction,
+            reconciledProviderAccountIds.has(transaction.account_id),
+          ),
         );
       for (const removed of changes.removed) {
         await tx.transaction.updateMany({
@@ -479,6 +493,21 @@ export async function syncPlaidConnection(
           },
           data: { status: "CANCELED", removedAt: now },
         });
+      }
+      await bootstrapTransactionCategories(tx, ownerId);
+      await classifyStoredTransactions(
+        tx,
+        ownerId,
+        storedTransactions.map(({ id }) => id),
+      );
+      for (const stored of storedTransactions) {
+        if (stored.pendingId)
+          await preservePendingOwnerState(
+            tx,
+            ownerId,
+            stored.pendingId,
+            stored.id,
+          );
       }
       await tx.institutionConnection.update({
         where: { id: connection.id },

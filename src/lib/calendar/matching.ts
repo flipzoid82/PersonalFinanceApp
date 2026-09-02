@@ -48,8 +48,10 @@ export function scoreTransactionMatch(
     transaction.currency !== event.currency
   )
     return null;
-  const role = transaction.override
-    ?.financialRoleOverride as FinancialRole | null;
+  const role =
+    transaction.override?.financialRoleOverride ??
+    transaction.classification?.financialRole ??
+    null;
   if (role && !EXPECTED_ROLES[event.eventType].includes(role)) return null;
 
   let score = 0;

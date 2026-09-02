@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { MetricCard } from "./metric-card";
 import { OverviewPanels } from "./overview-panels";
 import { Card } from "@/components/ui/card";
@@ -84,7 +85,7 @@ export function OverviewDashboard({
     {
       label: "Income This Month",
       value: formatCurrency(dashboard.metrics.income),
-      support: "Posted, explicitly classified income",
+      support: "Posted, owner-reviewed or deterministically resolved income",
       href: "/transactions",
       order: "order-5",
       tone: "positive" as const,
@@ -147,6 +148,36 @@ export function OverviewDashboard({
           className="mt-5"
         >
           {dashboard.partialReasons.join(" ")}
+        </Notice>
+      ) : null}
+
+      {dashboard.transactionCoverage.some(
+        ({ unresolvedCount }) => unresolvedCount > 0,
+      ) ? (
+        <Notice
+          tone="warning"
+          title="Transaction classification coverage"
+          icon={AlertTriangle}
+          role="status"
+          className="mt-5"
+        >
+          {dashboard.transactionCoverage
+            .filter(({ unresolvedCount }) => unresolvedCount > 0)
+            .map((coverage) => (
+              <span key={coverage.currency} className="block">
+                {coverage.unresolvedCount} {coverage.currency} transaction
+                {coverage.unresolvedCount === 1 ? "" : "s"} totaling{" "}
+                {formatCurrency(coverage.unresolvedAmount, coverage.currency)}{" "}
+                need review. {formatPercent(coverage.resolvedPercent)} of
+                current-month magnitude is resolved.{" "}
+                <Link
+                  href="/transactions?view=inbox"
+                  className="font-semibold underline"
+                >
+                  Open Transaction Inbox
+                </Link>
+              </span>
+            ))}
         </Notice>
       ) : null}
 

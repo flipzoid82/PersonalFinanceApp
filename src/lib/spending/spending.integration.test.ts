@@ -187,7 +187,7 @@ describeDatabase("Milestone 9 spending integration", () => {
         financialRoleOverride: FinancialRole.EXPENSE,
       },
     });
-    const refund = await create("refund", account.id, "25");
+    const refund = await create("refund", account.id, "-25");
     await prisma.transactionOverride.create({
       data: {
         userId: owner.id,

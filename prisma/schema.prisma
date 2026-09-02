@@ -63,8 +63,65 @@ enum FinancialRole {
   CREDIT_CARD_PAYMENT
   INVESTMENT_ACTIVITY
   DEBT_PAYMENT
+  BORROWING_PROCEEDS
   IGNORED
   UNCATEGORIZED
+}
+
+enum TransactionCategoryKind {
+  EXPENSE
+  INCOME
+}
+
+enum EconomicDirection {
+  INFLOW
+  OUTFLOW
+  UNKNOWN
+}
+
+enum ClassificationProvenance {
+  OWNER_OVERRIDE
+  OWNER_RULE
+  SYSTEM
+  PROVIDER
+  UNRESOLVED
+}
+
+enum ClassificationCertainty {
+  CONFIRMED
+  DETERMINISTIC
+  PROVIDER_ONLY
+  CONFLICTING
+  UNKNOWN
+}
+
+enum ClassificationReviewState {
+  RESOLVED
+  NEEDS_REVIEW
+  DEFERRED
+}
+
+enum ClassificationRuleMatchType {
+  MERCHANT_EXACT
+  DESCRIPTION_EXACT
+  DESCRIPTION_PREFIX
+  DESCRIPTION_CONTAINS
+  MERCHANT_ACCOUNT
+}
+
+enum TransactionRelationshipType {
+  LEGACY_UNTYPED
+  INTERNAL_TRANSFER
+  CREDIT_CARD_PAYMENT
+  REFUND
+  REIMBURSEMENT
+}
+
+enum TransactionRelationshipState {
+  SUGGESTED
+  CONFIRMED
+  REJECTED
+  NEEDS_REVIEW
 }
 
 enum RecurringFlowType {
@@ -237,6 +294,11 @@ model User {
   accounts                   Account[]
   transactions               Transaction[]
   transactionOverrides       TransactionOverride[]
+  transactionCategories      TransactionCategory[]
+  transactionClassifications TransactionClassification[]
+  classificationRules        ClassificationRule[]
+  transactionAllocations     TransactionAllocation[]
+  transactionRelationships   TransactionRelationship[]
   recurringStreams           RecurringStream[]
   calendarEvents             CalendarEvent[]
   calendarOverrides          CalendarOverride[]
@@ -246,6 +308,8 @@ model User {
   manualAssets               ManualAsset[]
   balanceSnapshots           BalanceSnapshot[]
   importJobs                 ImportJob[]
+  transactionTruthCutoverAt  DateTime?                   @map("transaction_truth_cutover_at")
+  transactionTruthVersion    Int?                        @map("transaction_truth_version")
   createdAt                  DateTime                    @default(now()) @map("created_at")
   updatedAt                  DateTime                    @updatedAt @map("updated_at")
 
@@ -354,6 +418,7 @@ model Account {
   lastImportedAt          DateTime?                   @map("last_imported_at")
   notes                   String?
   transactions            Transaction[]
+  classificationRules     ClassificationRule[]
   recurringStreams        RecurringStream[]
   calendarEvents          CalendarEvent[]
   investmentHoldings      InvestmentHolding[]
@@ -369,6 +434,7 @@ model Account {
   updatedAt               DateTime                    @updatedAt @map("updated_at")
 
   @@unique([dataSourceId, providerAccountId])
+  @@unique([id, userId])
   @@unique([userId, providerIdentityKey])
   @@index([userId])
   @@index([userId, accountType, isActive])
@@ -416,34 +482,39 @@ model AccountMergeAudit {
 }
 
 model Transaction {
-  id                           String                @id @default(cuid())
-  userId                       String                @map("user_id")
-  user                         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId                    String                @map("account_id")
-  account                      Account               @relation(fields: [accountId], references: [id], onDelete: NoAction)
-  providerTransactionId        String?               @map("provider_transaction_id")
-  originalName                 String                @map("original_name")
-  merchantName                 String?               @map("merchant_name")
-  amount                       Decimal               @db.Decimal(19, 4)
-  currency                     String                @default("USD") @db.Char(3)
-  authorizedAt                 DateTime?             @map("authorized_at")
-  postedAt                     DateTime?             @map("posted_at")
+  id                           String                     @id @default(cuid())
+  userId                       String                     @map("user_id")
+  user                         User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId                    String                     @map("account_id")
+  account                      Account                    @relation(fields: [accountId], references: [id], onDelete: NoAction)
+  providerTransactionId        String?                    @map("provider_transaction_id")
+  originalName                 String                     @map("original_name")
+  merchantName                 String?                    @map("merchant_name")
+  amount                       Decimal                    @db.Decimal(19, 4)
+  currency                     String                     @default("USD") @db.Char(3)
+  authorizedAt                 DateTime?                  @map("authorized_at")
+  postedAt                     DateTime?                  @map("posted_at")
   status                       TransactionStatus
-  providerCategory             String?               @map("provider_category")
-  providerCategoryConfidence   Decimal?              @map("provider_category_confidence") @db.Decimal(5, 4)
-  pendingProviderTransactionId String?               @map("pending_provider_transaction_id")
-  pendingTransactionId         String?               @map("pending_transaction_id")
-  pendingTransaction           Transaction?          @relation("PendingToPosted", fields: [pendingTransactionId], references: [id], onDelete: SetNull)
-  postedTransactions           Transaction[]         @relation("PendingToPosted")
-  rawProviderPayload           Json?                 @map("raw_provider_payload")
-  removedAt                    DateTime?             @map("removed_at")
-  override                     TransactionOverride?  @relation("SourceTransactionOverride")
-  linkedByOverrides            TransactionOverride[] @relation("LinkedTransactionOverride")
+  providerCategory             String?                    @map("provider_category")
+  providerCategoryConfidence   Decimal?                   @map("provider_category_confidence") @db.Decimal(5, 4)
+  pendingProviderTransactionId String?                    @map("pending_provider_transaction_id")
+  pendingTransactionId         String?                    @map("pending_transaction_id")
+  pendingTransaction           Transaction?               @relation("PendingToPosted", fields: [pendingTransactionId], references: [id], onDelete: SetNull)
+  postedTransactions           Transaction[]              @relation("PendingToPosted")
+  rawProviderPayload           Json?                      @map("raw_provider_payload")
+  removedAt                    DateTime?                  @map("removed_at")
+  override                     TransactionOverride?       @relation("SourceTransactionOverride")
+  linkedByOverrides            TransactionOverride[]      @relation("LinkedTransactionOverride")
+  classification               TransactionClassification?
+  allocations                  TransactionAllocation[]
+  outgoingRelationships        TransactionRelationship[]  @relation("RelationshipSource")
+  incomingRelationships        TransactionRelationship[]  @relation("RelationshipTarget")
   calendarEvents               CalendarEvent[]
-  createdAt                    DateTime              @default(now()) @map("created_at")
-  updatedAt                    DateTime              @updatedAt @map("updated_at")
+  createdAt                    DateTime                   @default(now()) @map("created_at")
+  updatedAt                    DateTime                   @updatedAt @map("updated_at")
 
   @@unique([accountId, providerTransactionId])
+  @@unique([id, userId])
   @@index([userId])
   @@index([accountId, postedAt])
   @@index([merchantName])
@@ -453,24 +524,158 @@ model Transaction {
 }
 
 model TransactionOverride {
-  id                    String         @id @default(cuid())
-  userId                String         @map("user_id")
-  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactionId         String         @unique @map("transaction_id")
-  transaction           Transaction    @relation("SourceTransactionOverride", fields: [transactionId], references: [id], onDelete: Cascade)
-  merchantNameOverride  String?        @map("merchant_name_override")
-  categoryOverride      String?        @map("category_override")
-  financialRoleOverride FinancialRole? @map("financial_role_override")
-  notes                 String?
-  excludedFromReports   Boolean        @default(false) @map("excluded_from_reports")
-  linkedTransactionId   String?        @map("linked_transaction_id")
-  linkedTransaction     Transaction?   @relation("LinkedTransactionOverride", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
-  createdAt             DateTime       @default(now()) @map("created_at")
-  updatedAt             DateTime       @updatedAt @map("updated_at")
+  id                        String               @id @default(cuid())
+  userId                    String               @map("user_id")
+  user                      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId             String               @unique @map("transaction_id")
+  transaction               Transaction          @relation("SourceTransactionOverride", fields: [transactionId], references: [id], onDelete: Cascade)
+  merchantNameOverride      String?              @map("merchant_name_override")
+  categoryOverride          String?              @map("category_override")
+  transactionCategoryId     String?              @map("transaction_category_id")
+  transactionCategory       TransactionCategory? @relation(fields: [transactionCategoryId], references: [id], onDelete: SetNull)
+  financialRoleOverride     FinancialRole?       @map("financial_role_override")
+  economicDirectionOverride EconomicDirection?   @map("economic_direction_override")
+  reviewedAt                DateTime?            @map("reviewed_at")
+  notes                     String?
+  excludedFromReports       Boolean              @default(false) @map("excluded_from_reports")
+  linkedTransactionId       String?              @map("linked_transaction_id")
+  linkedTransaction         Transaction?         @relation("LinkedTransactionOverride", fields: [linkedTransactionId], references: [id], onDelete: SetNull)
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  updatedAt                 DateTime             @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([linkedTransactionId])
+  @@index([transactionCategoryId])
   @@map("transaction_overrides")
+}
+
+model TransactionCategory {
+  id              String                      @id @default(cuid())
+  userId          String                      @map("user_id")
+  user            User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  systemKey       String?                     @map("system_key")
+  kind            TransactionCategoryKind
+  name            String
+  normalizedName  String                      @map("normalized_name")
+  isActive        Boolean                     @default(true) @map("is_active")
+  displayOrder    Int                         @default(0) @map("display_order")
+  classifications TransactionClassification[]
+  overrides       TransactionOverride[]
+  rules           ClassificationRule[]
+  allocations     TransactionAllocation[]
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  updatedAt       DateTime                    @updatedAt @map("updated_at")
+
+  @@unique([userId, systemKey])
+  @@unique([userId, normalizedName])
+  @@unique([id, userId])
+  @@index([userId, kind, isActive, displayOrder])
+  @@map("transaction_categories")
+}
+
+model TransactionClassification {
+  id                    String                    @id @default(cuid())
+  userId                String                    @map("user_id")
+  user                  User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId         String                    @unique @map("transaction_id")
+  transaction           Transaction               @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  financialRole         FinancialRole?            @map("financial_role")
+  transactionCategoryId String?                   @map("transaction_category_id")
+  transactionCategory   TransactionCategory?      @relation(fields: [transactionCategoryId], references: [id], onDelete: SetNull)
+  economicDirection     EconomicDirection         @default(UNKNOWN) @map("economic_direction")
+  roleProvenance        ClassificationProvenance  @default(UNRESOLVED) @map("role_provenance")
+  categoryProvenance    ClassificationProvenance  @default(UNRESOLVED) @map("category_provenance")
+  directionProvenance   ClassificationProvenance  @default(UNRESOLVED) @map("direction_provenance")
+  roleCertainty         ClassificationCertainty   @default(UNKNOWN) @map("role_certainty")
+  categoryCertainty     ClassificationCertainty   @default(UNKNOWN) @map("category_certainty")
+  directionCertainty    ClassificationCertainty   @default(UNKNOWN) @map("direction_certainty")
+  reviewState           ClassificationReviewState @default(NEEDS_REVIEW) @map("review_state")
+  reasonCodes           String[]                  @default([]) @map("reason_codes")
+  classifierVersion     Int                       @map("classifier_version")
+  evidence              Json?
+  deferredUntil         DateTime?                 @map("deferred_until")
+  classifiedAt          DateTime                  @default(now()) @map("classified_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  @@index([userId, reviewState, deferredUntil])
+  @@index([userId, financialRole])
+  @@index([userId, transactionCategoryId])
+  @@index([userId, economicDirection])
+  @@index([userId, classifierVersion])
+  @@map("transaction_classifications")
+}
+
+model ClassificationRule {
+  id                    String                      @id @default(cuid())
+  userId                String                      @map("user_id")
+  user                  User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchType             ClassificationRuleMatchType @map("match_type")
+  normalizedValue       String                      @map("normalized_value")
+  accountId             String?                     @map("account_id")
+  account               Account?                    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  transactionCategoryId String?                     @map("transaction_category_id")
+  transactionCategory   TransactionCategory?        @relation(fields: [transactionCategoryId], references: [id], onDelete: SetNull)
+  financialRole         FinancialRole?              @map("financial_role")
+  economicDirection     EconomicDirection?          @map("economic_direction")
+  priority              Int                         @default(100)
+  isActive              Boolean                     @default(true) @map("is_active")
+  appliesFrom           DateTime                    @default(now()) @map("applies_from")
+  ruleVersion           Int                         @default(1) @map("rule_version")
+  createdAt             DateTime                    @default(now()) @map("created_at")
+  updatedAt             DateTime                    @updatedAt @map("updated_at")
+
+  @@index([userId, isActive, priority])
+  @@index([userId, matchType, normalizedValue])
+  @@index([accountId])
+  @@map("classification_rules")
+}
+
+model TransactionAllocation {
+  id                    String                   @id @default(cuid())
+  userId                String                   @map("user_id")
+  user                  User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId         String                   @map("transaction_id")
+  transaction           Transaction              @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionCategoryId String                   @map("transaction_category_id")
+  transactionCategory   TransactionCategory      @relation(fields: [transactionCategoryId], references: [id], onDelete: Restrict)
+  amount                Decimal                  @db.Decimal(19, 4)
+  displayOrder          Int                      @default(0) @map("display_order")
+  provenance            ClassificationProvenance @default(OWNER_OVERRIDE)
+  reviewedAt            DateTime?                @map("reviewed_at")
+  createdAt             DateTime                 @default(now()) @map("created_at")
+  updatedAt             DateTime                 @updatedAt @map("updated_at")
+
+  @@unique([transactionId, transactionCategoryId])
+  @@unique([transactionId, displayOrder])
+  @@index([userId, transactionCategoryId])
+  @@map("transaction_allocations")
+}
+
+model TransactionRelationship {
+  id                  String                       @id @default(cuid())
+  userId              String                       @map("user_id")
+  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceTransactionId String                       @map("source_transaction_id")
+  sourceTransaction   Transaction                  @relation("RelationshipSource", fields: [sourceTransactionId], references: [id], onDelete: Cascade)
+  targetTransactionId String                       @map("target_transaction_id")
+  targetTransaction   Transaction                  @relation("RelationshipTarget", fields: [targetTransactionId], references: [id], onDelete: Cascade)
+  type                TransactionRelationshipType
+  appliedAmount       Decimal?                     @map("applied_amount") @db.Decimal(19, 4)
+  provenance          ClassificationProvenance     @default(SYSTEM)
+  certainty           ClassificationCertainty      @default(UNKNOWN)
+  state               TransactionRelationshipState @default(SUGGESTED)
+  reasonCodes         String[]                     @default([]) @map("reason_codes")
+  evidence            Json?
+  confirmedAt         DateTime?                    @map("confirmed_at")
+  createdAt           DateTime                     @default(now()) @map("created_at")
+  updatedAt           DateTime                     @updatedAt @map("updated_at")
+
+  @@unique([userId, type, sourceTransactionId, targetTransactionId])
+  @@index([userId, state, type])
+  @@index([sourceTransactionId])
+  @@index([targetTransactionId])
+  @@map("transaction_relationships")
 }
 
 model RecurringStream {

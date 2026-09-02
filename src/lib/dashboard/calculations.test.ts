@@ -12,6 +12,7 @@ import {
   DataSourceStatus,
   DataSourceType,
   FinancialRole,
+  EconomicDirection,
   InvestmentSource,
   Prisma,
   TransactionStatus,
@@ -86,6 +87,11 @@ function transaction(
       merchantNameOverride: null,
       categoryOverride: "Groceries",
       financialRoleOverride: role,
+      economicDirectionOverride:
+        role === FinancialRole.INCOME || role === FinancialRole.REFUND
+          ? EconomicDirection.INFLOW
+          : EconomicDirection.OUTFLOW,
+      reviewedAt: NOW,
       excludedFromReports: false,
     },
     ...options,

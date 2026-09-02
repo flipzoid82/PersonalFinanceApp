@@ -1,5 +1,9 @@
 import {
   AccountType,
+  ClassificationCertainty,
+  ClassificationProvenance,
+  ClassificationReviewState,
+  EconomicDirection,
   ConfidenceLevel,
   FinancialRole,
   Prisma,
@@ -19,6 +23,7 @@ import {
   normalizeCounterparty,
 } from "./normalization";
 import type { DetectionTransaction } from "./types";
+import { TRANSACTION_CLASSIFIER_VERSION } from "@/lib/transactions/classifier";
 
 const NOW = new Date("2026-04-01T12:00:00.000Z");
 
@@ -56,8 +61,49 @@ function transaction(
     override: {
       merchantNameOverride: null,
       categoryOverride: null,
+      transactionCategoryId:
+        role === FinancialRole.EXPENSE || role === FinancialRole.INCOME
+          ? `${role.toLowerCase()}-category`
+          : null,
+      transactionCategory:
+        role === FinancialRole.EXPENSE || role === FinancialRole.INCOME
+          ? {
+              id: `${role.toLowerCase()}-category`,
+              name: category ?? "Subscriptions",
+            }
+          : null,
       financialRoleOverride: role,
       excludedFromReports: false,
+    },
+    classification: {
+      classifierVersion: TRANSACTION_CLASSIFIER_VERSION,
+      financialRole: role,
+      transactionCategoryId:
+        role === FinancialRole.EXPENSE || role === FinancialRole.INCOME
+          ? `${role.toLowerCase()}-category`
+          : null,
+      transactionCategory:
+        role === FinancialRole.EXPENSE || role === FinancialRole.INCOME
+          ? {
+              id: `${role.toLowerCase()}-category`,
+              name: category ?? "Subscriptions",
+            }
+          : null,
+      economicDirection:
+        role === FinancialRole.INCOME ||
+        role === FinancialRole.BORROWING_PROCEEDS ||
+        role === FinancialRole.REFUND
+          ? EconomicDirection.INFLOW
+          : EconomicDirection.OUTFLOW,
+      roleProvenance: ClassificationProvenance.SYSTEM,
+      categoryProvenance: ClassificationProvenance.SYSTEM,
+      directionProvenance: ClassificationProvenance.SYSTEM,
+      roleCertainty: ClassificationCertainty.DETERMINISTIC,
+      categoryCertainty: ClassificationCertainty.DETERMINISTIC,
+      directionCertainty: ClassificationCertainty.DETERMINISTIC,
+      reviewState: ClassificationReviewState.RESOLVED,
+      reasonCodes: [],
+      deferredUntil: null,
     },
     ...changes,
   };
@@ -138,6 +184,24 @@ describe("merchant and eligibility normalization", () => {
       flowType: RecurringFlowType.DEBT_PAYMENT,
     });
     expect(source.originalName).toBe("Provider original");
+  });
+
+  it("fails closed when canonical classification is missing or outdated", () => {
+    expect(
+      effectiveDetectionTransaction(
+        transaction("missing", "2026-03-01", { classification: null }),
+      ),
+    ).toBeNull();
+    expect(
+      effectiveDetectionTransaction(
+        transaction("outdated", "2026-03-01", {
+          classification: {
+            ...transaction("base", "2026-03-01").classification!,
+            classifierVersion: TRANSACTION_CLASSIFIER_VERSION - 1,
+          },
+        }),
+      ),
+    ).toBeNull();
   });
 
   it("keeps generic transfers out but supports stable transfer and card-payment streams", () => {
@@ -236,6 +300,7 @@ describe("candidate grouping, money, and confidence", () => {
       transaction(`cad-${index}`, postedAt, { currency: "CAD" }),
       transaction(`income-${index}`, postedAt, {
         role: FinancialRole.INCOME,
+        amount: new Prisma.Decimal("-15.9900"),
       }),
       transaction(`owner-${index}`, postedAt, {
         userId: "owner-b",

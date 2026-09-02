@@ -9,11 +9,13 @@ import {
   startOfUtcMonth,
 } from "./dates";
 import type { RawDashboardData } from "./types";
+import { ensureTransactionTruthReady } from "@/lib/transactions/truth";
 
 export async function getDashboardData(
   ownerId: string,
   now = new Date(),
 ): Promise<RawDashboardData> {
+  await ensureTransactionTruthReady(ownerId);
   const today = startOfUtcDay(now);
   const recentStart = addUtcDays(now, -30);
   const queryStart =
@@ -72,9 +74,24 @@ export async function getDashboardData(
           select: {
             merchantNameOverride: true,
             categoryOverride: true,
+            transactionCategoryId: true,
+            transactionCategory: { select: { id: true, name: true } },
             financialRoleOverride: true,
+            economicDirectionOverride: true,
+            reviewedAt: true,
             excludedFromReports: true,
           },
+        },
+        classification: {
+          include: {
+            transactionCategory: { select: { id: true, name: true } },
+          },
+        },
+        allocations: {
+          include: {
+            transactionCategory: { select: { id: true, name: true } },
+          },
+          orderBy: [{ displayOrder: "asc" }, { id: "asc" }],
         },
       },
     }),

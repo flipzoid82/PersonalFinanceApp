@@ -8,6 +8,8 @@ import type {
   EffectiveDetectionTransaction,
 } from "./types";
 import { effectiveTransactionValues } from "@/lib/transactions/effective";
+import { isRecurrenceEligible } from "@/lib/transactions/eligibility";
+import { TRANSACTION_CLASSIFIER_VERSION } from "@/lib/transactions/classifier";
 
 const GENERIC_IDENTITIES = new Set([
   "ach",
@@ -22,15 +24,6 @@ const GENERIC_IDENTITIES = new Set([
   "withdrawal",
 ]);
 
-const EXCLUDED_CATEGORY_PARTS = [
-  "CASH_WITHDRAWAL",
-  "REFUND",
-  "INVESTMENT",
-  "SECURITIES",
-  "BANK_FEES",
-  "INTEREST_CHARGED",
-];
-
 export function normalizeCounterparty(value: string) {
   return value
     .normalize("NFKC")
@@ -41,37 +34,6 @@ export function normalizeCounterparty(value: string) {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function providerRole(category: string | null) {
-  const value = category?.toUpperCase() ?? "";
-  if (!value || EXCLUDED_CATEGORY_PARTS.some((part) => value.includes(part)))
-    return null;
-  if (value.includes("CREDIT_CARD_PAYMENT"))
-    return FinancialRole.CREDIT_CARD_PAYMENT;
-  if (value.includes("LOAN_PAYMENT") || value.includes("DEBT_PAYMENT"))
-    return FinancialRole.DEBT_PAYMENT;
-  if (value.includes("TRANSFER")) return FinancialRole.TRANSFER;
-  if (
-    value.includes("INCOME") ||
-    value.includes("PAYROLL") ||
-    value.includes("DIRECT_DEPOSIT")
-  )
-    return FinancialRole.INCOME;
-  if (
-    value.includes("RENT") ||
-    value.includes("UTILIT") ||
-    value.includes("FOOD") ||
-    value.includes("ENTERTAINMENT") ||
-    value.includes("GENERAL_MERCHANDISE") ||
-    value.includes("MEDICAL") ||
-    value.includes("TRANSPORTATION") ||
-    value.includes("TRAVEL") ||
-    value.includes("PERSONAL_CARE") ||
-    value.includes("SUBSCRIPTION")
-  )
-    return FinancialRole.EXPENSE;
-  return null;
 }
 
 function recurringKinds(role: FinancialRole, category: string | null) {
@@ -122,6 +84,8 @@ export function effectiveDetectionTransaction(
   transaction: DetectionTransaction,
 ): EffectiveDetectionTransaction | null {
   if (
+    transaction.classification?.classifierVersion !==
+      TRANSACTION_CLASSIFIER_VERSION ||
     transaction.status !== "POSTED" ||
     !transaction.postedAt ||
     transaction.removedAt ||
@@ -133,8 +97,8 @@ export function effectiveDetectionTransaction(
     return null;
 
   const effective = effectiveTransactionValues(transaction);
-  const financialRole =
-    effective.financialRole ?? providerRole(transaction.providerCategory);
+  if (!isRecurrenceEligible(transaction, effective)) return null;
+  const financialRole = effective.financialRole;
   if (!financialRole) return null;
   const kinds = recurringKinds(financialRole, transaction.providerCategory);
   if (!kinds) return null;

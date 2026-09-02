@@ -17,6 +17,7 @@ import {
 } from "./dates";
 import { deriveDashboardState } from "./state";
 import { effectiveTransactionValues } from "@/lib/transactions/effective";
+import { isFinalizedReportingEligible } from "@/lib/transactions/eligibility";
 import type {
   DashboardAccount,
   DashboardCalendarEvent,
@@ -80,7 +81,9 @@ function effectiveTransaction(
     name: effective.merchant,
     category: effective.category,
     role: effective.financialRole,
+    allocations: effective.allocations,
     excluded: effective.excludedFromReports,
+    needsReview: effective.needsReview,
   };
 }
 
@@ -130,23 +133,45 @@ export function calculateMonthlyActivity(data: RawDashboardData, now: Date) {
     )
       continue;
     const effective = effectiveTransaction(transaction);
-    if (effective.excluded || !effective.role) continue;
+    if (
+      effective.excluded ||
+      !effective.role ||
+      !isFinalizedReportingEligible(transaction, {
+        financialRole: effective.role,
+        excludedFromReports: effective.excluded,
+        needsReview: effective.needsReview,
+      })
+    )
+      continue;
     const amount = transaction.amount.abs();
 
     if (effective.role === FinancialRole.INCOME) {
       income = income.plus(amount);
     } else if (effective.role === FinancialRole.EXPENSE) {
       spending = spending.plus(amount);
-      categories.set(
-        effective.category,
-        (categories.get(effective.category) ?? ZERO).plus(amount),
-      );
+      for (const allocation of effective.allocations)
+        categories.set(
+          allocation.category,
+          (categories.get(allocation.category) ?? ZERO).plus(allocation.amount),
+        );
     } else if (effective.role === FinancialRole.REFUND) {
-      spending = spending.minus(amount);
-      categories.set(
-        effective.category,
-        (categories.get(effective.category) ?? ZERO).minus(amount),
-      );
+      const appliedRefund = effective.allocations.length
+        ? effective.allocations.reduce(
+            (total, allocation) => total.plus(allocation.amount),
+            ZERO,
+          )
+        : amount;
+      spending = spending.minus(appliedRefund);
+      const refundAllocations = effective.allocations.length
+        ? effective.allocations
+        : [{ category: effective.category, amount }];
+      for (const allocation of refundAllocations)
+        categories.set(
+          allocation.category,
+          (categories.get(allocation.category) ?? ZERO).minus(
+            allocation.amount,
+          ),
+        );
     }
   }
 
@@ -156,6 +181,63 @@ export function calculateMonthlyActivity(data: RawDashboardData, now: Date) {
     .sort((a, b) => b.amount.abs().comparedTo(a.amount.abs()));
 
   return { income, spending, spendingCategories };
+}
+
+function transactionCoverage(data: RawDashboardData, now: Date) {
+  const monthStart = startOfUtcMonth(now);
+  const nextMonth = startOfNextUtcMonth(now);
+  const groups = new Map<
+    string,
+    {
+      totalCount: number;
+      resolvedCount: number;
+      unresolvedCount: number;
+      totalAmount: Prisma.Decimal;
+      unresolvedAmount: Prisma.Decimal;
+    }
+  >();
+  for (const transaction of data.transactions) {
+    if (
+      transaction.userId !== data.ownerId ||
+      transaction.status !== TransactionStatus.POSTED ||
+      !transaction.postedAt ||
+      transaction.postedAt < monthStart ||
+      transaction.postedAt >= nextMonth
+    )
+      continue;
+    const effective = effectiveTransactionValues(transaction);
+    const group = groups.get(transaction.currency) ?? {
+      totalCount: 0,
+      resolvedCount: 0,
+      unresolvedCount: 0,
+      totalAmount: ZERO,
+      unresolvedAmount: ZERO,
+    };
+    const amount = transaction.amount.abs();
+    group.totalCount += 1;
+    group.totalAmount = group.totalAmount.plus(amount);
+    if (!effective.needsReview) group.resolvedCount += 1;
+    else {
+      group.unresolvedCount += 1;
+      group.unresolvedAmount = group.unresolvedAmount.plus(amount);
+    }
+    groups.set(transaction.currency, group);
+  }
+  return [...groups.entries()]
+    .map(([currency, group]) => ({
+      currency,
+      totalCount: group.totalCount,
+      resolvedCount: group.resolvedCount,
+      unresolvedCount: group.unresolvedCount,
+      unresolvedAmount: group.unresolvedAmount,
+      resolvedPercent: group.totalAmount.isZero()
+        ? new Prisma.Decimal(100)
+        : group.totalAmount
+            .minus(group.unresolvedAmount)
+            .dividedBy(group.totalAmount)
+            .times(100),
+    }))
+    .sort((a, b) => a.currency.localeCompare(b.currency));
 }
 
 function recentTransactions(data: RawDashboardData, now: Date) {
@@ -470,5 +552,6 @@ export function calculateDashboard(
     netWorthTrend: trend.points,
     trendIsPartial: trend.isPartial,
     sourceHealth: state.sourceHealth,
+    transactionCoverage: transactionCoverage(data, now),
   };
 }

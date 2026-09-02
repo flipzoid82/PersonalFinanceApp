@@ -10,6 +10,7 @@ import type {
   RecurringFrequency,
   RecurringStatus,
   TransactionStatus,
+  FinancialRole,
 } from "@prisma/client";
 import type { CalendarRange } from "./dates";
 
@@ -34,7 +35,8 @@ export type CalendarTransaction = {
   currency: string;
   postedAt: Date | null;
   status: TransactionStatus;
-  override: { financialRoleOverride: string | null } | null;
+  override: { financialRoleOverride: FinancialRole | null } | null;
+  classification?: { financialRole: FinancialRole | null } | null;
 };
 
 export type CalendarStream = {

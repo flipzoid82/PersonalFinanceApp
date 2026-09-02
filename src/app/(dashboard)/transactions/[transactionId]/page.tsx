@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import {
   getTransactionCategoryOptions,
   getTransactionDetail,
+  getRefundLinkCandidates,
 } from "@/lib/transactions/queries";
 
 export default async function TransactionDetailPage({
@@ -15,9 +16,10 @@ export default async function TransactionDetailPage({
 }) {
   const owner = await requireUser();
   const { transactionId } = await params;
-  const [transaction, categories] = await Promise.all([
+  const [transaction, categories, refundCandidates] = await Promise.all([
     getTransactionDetail(owner.id, transactionId),
     getTransactionCategoryOptions(owner.id),
+    getRefundLinkCandidates(owner.id, transactionId),
   ]);
   if (!transaction) notFound();
   const feedback = (await searchParams) ?? {};
@@ -25,6 +27,7 @@ export default async function TransactionDetailPage({
     <TransactionDetail
       transaction={transaction}
       categories={categories}
+      refundCandidates={refundCandidates}
       message={feedback.message}
       error={feedback.error}
     />

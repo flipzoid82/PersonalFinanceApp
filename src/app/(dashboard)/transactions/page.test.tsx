@@ -3,11 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   getTransactionLedger: vi.fn(),
+  getClassificationRules: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({ requireUser: mocks.requireUser }));
 vi.mock("@/lib/transactions/queries", () => ({
   getTransactionLedger: mocks.getTransactionLedger,
+  getClassificationRuleSummaries: mocks.getClassificationRules,
+}));
+vi.mock("@/lib/transactions/mutations", () => ({
+  previewHistoricalRuleApplication: vi.fn(),
 }));
 
 import TransactionsPage from "./page";
@@ -17,6 +22,7 @@ describe("TransactionsPage", () => {
     vi.clearAllMocks();
     mocks.requireUser.mockResolvedValue({ id: "owner-1" });
     mocks.getTransactionLedger.mockResolvedValue({ transactions: [] });
+    mocks.getClassificationRules.mockResolvedValue([]);
   });
 
   it("requires the authenticated owner and forwards URL filters", async () => {

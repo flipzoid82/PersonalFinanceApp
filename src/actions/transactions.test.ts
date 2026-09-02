@@ -25,7 +25,9 @@ function form(intent: "save" | "clear" = "save") {
   data.set("transactionId", "transaction-1");
   data.set("returnTo", "/transactions/transaction-1");
   data.set("categoryOverride", "Dining");
+  data.set("transactionCategoryId", "");
   data.set("financialRoleOverride", "EXPENSE");
+  data.set("economicDirectionOverride", "");
   data.set("notes", "Owner note");
   data.set("excludedFromReports", "true");
   data.set("intent", intent);
@@ -50,7 +52,9 @@ describe("transaction override action", () => {
       "transaction-1",
       {
         categoryOverride: "Dining",
+        transactionCategoryId: null,
         financialRoleOverride: "EXPENSE",
+        economicDirectionOverride: null,
         notes: "Owner note",
         excludedFromReports: true,
       },
@@ -70,7 +74,9 @@ describe("transaction override action", () => {
       "transaction-1",
       {
         categoryOverride: null,
+        transactionCategoryId: null,
         financialRoleOverride: null,
+        economicDirectionOverride: null,
         notes: null,
         excludedFromReports: false,
       },
