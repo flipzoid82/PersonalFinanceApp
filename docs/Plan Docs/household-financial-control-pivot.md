@@ -23,7 +23,7 @@ The product should continuously explain:
 Household Control 1–4 together form the first useful version:
 
 1. **Transaction Truth and Attention** — one auditable effective meaning per transaction, deterministic classification, Transaction Inbox, movement/refund links, and exact splits.
-2. **Budget & Income Plan** — planned income, spending allocations, fixed obligations, protected reserves, generic planned saving, generic extra debt principal, intentionally unassigned income, live progress, and explicit reallocations. Zero-based budgeting is optional.
+2. **Budget & Income Plan** — planned income, spending allocations, fixed obligations, protected planning allocations, generic planned saving, generic extra debt principal, intentionally unassigned income, live progress, and explicit reallocations. Zero-based budgeting is optional.
 3. **Routed Cash Flow** — Calendar routing, income/payment account routing, reserve floors, planned transfers, dated account projections, funding states/gaps, pay-cycle boundaries, projection lineage, and freshness/confidence.
 4. **Explainable Safe to Spend** — a dated, reproducible household/account result with commitment deduplication, coverage, freshness, and confidence.
 
@@ -53,10 +53,12 @@ This version must answer:
 - Amount may prioritize attention but does not by itself block finalized reporting.
 - Monthly category allocations, derived weekly pace, and pay-cycle projections.
 - Planned or expected income does not become current liquidity merely because it appears in a plan.
+- Calendar-backed income is suggested and requires explicit owner inclusion; later source changes never silently rewrite its approved plan amount.
 - Planned saving is distinct from funded saving and requires approved funding evidence.
 - HC1 transaction-purpose categories are distinct from HC2 planning destinations.
 - Existing Bills behavior, recurring streams, and Calendar occurrences remain the obligation foundation; HC2 reconciles with them instead of creating a second obligation truth source.
-- Explicit initial rollover and budget reallocations.
+- Explicit initial rollover as a separately disclosed signed opening category balance, never current-period income or proof of funding, plus balanced auditable budget reallocations.
+- One Calendar-backed fixed obligation contributes one planned commitment even when its lineage is also presented through Bills, Calendar, or an HC1 category.
 - Cash-based linked refund/reimbursement treatment.
 - Transfer recommendations and acknowledgment only; no institution-initiated movement.
 - Minor unresolved classification may produce a quantified, qualified result; materially unresolved or stale critical inputs fail closed.

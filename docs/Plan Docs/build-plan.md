@@ -144,9 +144,10 @@ The owner can plan what expected income needs to accomplish, see what remains in
 ### Scope
 
 - planned and expected income for the planning period;
+- explicit owner inclusion of Calendar-backed income suggestions, with source drift shown for reconciliation rather than silently applied;
 - monthly spending allocations that reference stable HC1 transaction-purpose categories;
 - fixed obligations reconciled with existing Bills behavior, recurring streams, and Calendar occurrences rather than duplicated as a second obligation truth source;
-- protected reserves;
+- protected planning allocations;
 - generic planned saving;
 - generic owner-entered extra debt-principal allocation;
 - intentionally unassigned income and optional zero-based budgeting;
@@ -156,14 +157,16 @@ The owner can plan what expected income needs to accomplish, see what remains in
 - weekly pace derived from the monthly plan;
 - projected end-of-period spending and over/under amount;
 - classification coverage, confidence, explanation, and transaction drill-down;
-- explicit initial rollover decisions.
+- explicit initial signed opening-balance rollover decisions that remain separate from current-period planned income and funded cash.
 
 ### Completion criteria
 
 - planned income, assigned amounts, protected amounts, planned saving, planned extra debt reduction, and unassigned income reconcile exactly;
+- rollover affects category availability through a separately disclosed opening balance and does not alter the current-period planned-income equation;
 - expected or pending income does not become current available liquidity;
 - planned saving is not presented as funded without approved evidence;
 - one existing obligation reduces capacity at most once across Bills, recurrence, Calendar, and the plan;
+- owner-local month boundaries agree across Budget & Plan, Overview, and Spending without rewriting provider timestamps or Calendar date-only values;
 - category totals reconcile exactly to classified transaction allocations;
 - refunds/reimbursements and exclusions follow canonical definitions;
 - spending pace handles partial periods and incomplete coverage conservatively;
